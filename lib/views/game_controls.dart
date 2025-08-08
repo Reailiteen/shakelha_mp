@@ -12,44 +12,73 @@ class GameControls extends StatelessWidget {
     
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
         children: [
-          ElevatedButton.icon(
-            onPressed: game.canSubmitMove() ? () => game.submitMove() : null,
-            icon: const Icon(Icons.check),
-            label: const Text('Submit'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+          if (game.isPlacingTiles)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                'Tap a rack tile, then tap the board to place it',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
             ),
-          ),
-          ElevatedButton.icon(
-            onPressed: game.hasPendingPlacements() ? () => game.cancelMove() : null,
-            icon: const Icon(Icons.undo),
-            label: const Text('Cancel'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: game.isMyTurn ? () => game.passTurn() : null,
-            icon: const Icon(Icons.skip_next),
-            label: const Text('Pass'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: game.canExchangeTiles() ? () => _showExchangeDialog(context, game) : null,
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text('Exchange'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
-              foregroundColor: Colors.white,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton.icon(
+                onPressed: game.isMyTurn
+                    ? () {
+                        if (game.isPlacingTiles) {
+                          game.cancelPlacingTiles();
+                        } else {
+                          game.startPlacingTiles();
+                        }
+                      }
+                    : null,
+                icon: Icon(game.isPlacingTiles ? Icons.close : Icons.play_arrow),
+                label: Text(game.isPlacingTiles ? 'Finish Placing' : 'Place'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: game.canSubmitMove() ? () => game.submitMove() : null,
+                icon: const Icon(Icons.check),
+                label: const Text('Submit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: game.hasPendingPlacements() ? () => game.cancelMove() : null,
+                icon: const Icon(Icons.undo),
+                label: const Text('Cancel'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: game.isMyTurn ? () => game.passTurn() : null,
+                icon: const Icon(Icons.skip_next),
+                label: const Text('Pass'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: game.canExchangeTiles() ? () => _showExchangeDialog(context, game) : null,
+                icon: const Icon(Icons.swap_horiz),
+                label: const Text('Exchange'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ),
         ],
       ),

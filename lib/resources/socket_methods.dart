@@ -122,18 +122,36 @@ class SocketMethods {
   }
   void createRoomSuccessListener(BuildContext context) {
     _socketClient.on('createRoomSuccess', (roomData) {
-      final room = Room.fromJson(_normalizeRoom(roomData));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var room = Room.fromJson(_normalizeRoom(roomData));
+      // Deal initial racks if empty
+      if (room.players.every((p) => p.rack.isEmpty)) {
+        final ld = room.letterDistribution; // mutable bag
+        final newPlayers = room.players.map((p) {
+          final need = 7 - p.rack.length;
+          final tiles = need > 0 ? ld.drawTiles(need, ownerId: p.id) : <dynamic>[];
+          return p.updateRack([...p.rack, ...tiles]);
+        }).toList();
+        room = room.copyWith(players: newPlayers, letterDistribution: ld);
+      }
+      Provider.of<RoomDataProvider>(context, listen: false).updateRoom(room);
       Navigator.pushNamed(context, GameScreen.routeName);
     });
   }
 
   void joinRoomSuccessListener(BuildContext context) {
     _socketClient.on('joinRoomSuccess', (roomData) {
-      final room = Room.fromJson(_normalizeRoom(roomData));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var room = Room.fromJson(_normalizeRoom(roomData));
+      // Ensure racks are dealt at join time if missing
+      if (room.players.any((p) => p.rack.isEmpty)) {
+        final ld = room.letterDistribution;
+        final newPlayers = room.players.map((p) {
+          final need = 7 - p.rack.length;
+          final tiles = need > 0 ? ld.drawTiles(need, ownerId: p.id) : <dynamic>[];
+          return p.updateRack([...p.rack, ...tiles]);
+        }).toList();
+        room = room.copyWith(players: newPlayers, letterDistribution: ld);
+      }
+      Provider.of<RoomDataProvider>(context, listen: false).updateRoom(room);
       Navigator.pushNamed(context, GameScreen.routeName);
     });
   }

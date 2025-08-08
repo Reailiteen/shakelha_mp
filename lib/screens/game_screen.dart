@@ -39,24 +39,57 @@ class _GameScreenState extends State<GameScreen> {
     RoomDataProvider roomDataProvider = Provider.of<RoomDataProvider>(context);
 
     return Scaffold(
+      appBar: roomDataProvider.room == null
+          ? null
+          : AppBar(
+              title: Text('Room: ${roomDataProvider.room!.id}'),
+              centerTitle: true,
+            ),
       body: roomDataProvider.room == null
           ? const WaitingLobby()
           : ChangeNotifierProvider<GameProvider>(
               create: (_) => GameProvider(),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    const Scoreboard(),
-                    const Expanded(child: ScrabbleBoard()),
-                    Text(
-                        '${roomDataProvider.room!.currentPlayerId ?? 'Player 1'}\'s turn',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const PlayerRack(),
-                    const GameControls(),
-                  ],
-                ),
-              ),
+              builder: (context, child) {
+                // Seed GameProvider with current Room and my player id
+                final game = context.read<GameProvider>();
+                final room = roomDataProvider.room!;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  game.updateRoom(room);
+                  // Map my socket id to the corresponding Player.id
+                  final mySocketId = _socketMethods.socketClient.id;
+                  final me = mySocketId == null
+                      ? null
+                      : room.players.firstWhere(
+                          (p) => p.socketId == mySocketId,
+                          orElse: () => room.players.first,
+                        );
+                  game.setCurrentPlayerId((me ?? room.players.first).id);
+                });
+                return SafeArea(
+                  child: Column(
+                    children: [
+                      const Scoreboard(),
+                      const Expanded(child: ScrabbleBoard()),
+                      Builder(builder: (context) {
+                        final g = context.watch<GameProvider>();
+                        final r = g.room;
+                        String turnLabel = 'Waiting...';
+                        if (r != null && r.players.isNotEmpty) {
+                          final idx = r.currentPlayerIndex;
+                          final name = r.players[idx].nickname;
+                          turnLabel = "$name's turn";
+                        }
+                        return Text(
+                          turnLabel,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        );
+                      }),
+                      const PlayerRack(),
+                      const GameControls(),
+                    ],
+                  ),
+                );
+              },
             ),
     );
   }

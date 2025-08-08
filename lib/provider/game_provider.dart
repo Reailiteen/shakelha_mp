@@ -64,7 +64,15 @@ class GameProvider extends ChangeNotifier {
   /// Updates turn status based on current player
   void _updateTurnStatus() {
     if (_room != null && _currentPlayerId != null) {
-      _isMyTurn = _room!.currentPlayerId == _currentPlayerId;
+      if (_room!.currentPlayerId != null) {
+        _isMyTurn = _room!.currentPlayerId == _currentPlayerId;
+      } else {
+        // Fallback: compute from currentPlayerIndex
+        final idx = _room!.currentPlayerIndex;
+        if (idx >= 0 && idx < _room!.players.length) {
+          _isMyTurn = _room!.players[idx].id == _currentPlayerId;
+        }
+      }
     }
   }
   
@@ -160,7 +168,19 @@ class GameProvider extends ChangeNotifier {
   
   /// Selects a tile from the rack
   void selectRackTile(int index) {
-    selectedRackIndex = selectedRackIndex == index ? null : index;
+    if (!_isPlacingTiles) return;
+    if (selectedRackIndex == index) {
+      selectedRackIndex = null;
+      _selectedTiles.clear();
+    } else {
+      selectedRackIndex = index;
+      final rack = myRack;
+      if (index >= 0 && index < rack.length) {
+        _selectedTiles
+          ..clear()
+          ..add(rack[index]);
+      }
+    }
     notifyListeners();
   }
   
