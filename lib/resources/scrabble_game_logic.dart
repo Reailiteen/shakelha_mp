@@ -6,7 +6,7 @@ import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/models/position.dart';
 import 'package:mp_tictactoe/models/room.dart';
 import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/provider/dictionary_provider.dart';
+import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 
 class ScrabbleGameLogic {
   static const int boardSize = 15;
@@ -271,8 +271,8 @@ class ScrabbleGameLogic {
   }
   
   static List<String> _getInvalidWords(List<String> words) {
-    // Validate words using the Arabic dictionary
-    final dict = DictionaryProvider();
+    // Validate words using the Arabic dictionary singleton (hash set)
+    final dict = ArabicDictionary.instance;
     return dict.getInvalidWords(words);
   }
   

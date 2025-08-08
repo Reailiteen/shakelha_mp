@@ -5,6 +5,9 @@ import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/models/position.dart';
 import 'package:mp_tictactoe/models/room.dart';
 import 'package:mp_tictactoe/models/tile.dart';
+import 'package:mp_tictactoe/resources/scrabble_game_logic.dart';
+import 'package:mp_tictactoe/resources/socket_methods.dart';
+import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 
 class GameProvider extends ChangeNotifier {
   Room? _room;
@@ -15,6 +18,7 @@ class GameProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _successMessage;
   bool _isMyTurn = false;
+  final SocketMethods _sockets = SocketMethods();
   
   // Getters
   Room? get room => _room;
@@ -64,15 +68,25 @@ class GameProvider extends ChangeNotifier {
   /// Updates turn status based on current player
   void _updateTurnStatus() {
     if (_room != null && _currentPlayerId != null) {
-      if (_room!.currentPlayerId != null) {
-        _isMyTurn = _room!.currentPlayerId == _currentPlayerId;
-      } else {
-        // Fallback: compute from currentPlayerIndex
-        final idx = _room!.currentPlayerIndex;
-        if (idx >= 0 && idx < _room!.players.length) {
-          _isMyTurn = _room!.players[idx].id == _currentPlayerId;
-        }
+      final mySocketId = _sockets.socketClient.id;
+      final idx = _room!.currentPlayerIndex;
+      bool turnByIndex = false;
+      if (idx >= 0 && idx < _room!.players.length) {
+        final currentP = _room!.players[idx];
+        turnByIndex = (currentP.id == _currentPlayerId) ||
+            (mySocketId != null && currentP.socketId == mySocketId);
       }
+      final turnById = _room!.currentPlayerId != null
+          ? (_room!.currentPlayerId == _currentPlayerId)
+          : false;
+      _isMyTurn = turnByIndex || turnById;
+      // Debug
+      // ignore: avoid_print
+      debugPrint('[turn] myId='+(_currentPlayerId??'?')+', mySocket='+ (mySocketId??'?') +
+          ', currentIdx='+idx.toString()+', idxId='+ (idx>=0&&idx<_room!.players.length? _room!.players[idx].id : '?') +
+          ', idxSocket='+ (idx>=0&&idx<_room!.players.length? _room!.players[idx].socketId : '?') +
+          ', room.currentPlayerId='+ (_room!.currentPlayerId?.toString()??'null') +
+          ', isMyTurn='+ _isMyTurn.toString());
     }
   }
   
@@ -131,6 +145,14 @@ class GameProvider extends ChangeNotifier {
     ));
     
     _clearMessages();
+    // Realtime: emit this single placement so other clients see immediately
+    if (_room != null) {
+      final payload = [
+        PlacedTile(tile: selectedTile, position: position).toJson(),
+      ];
+      _sockets.placeTiles(_room!.id, payload);
+      debugPrint('[emit placeTiles realtime] pos=(${position.row},${position.col})');
+    }
     notifyListeners();
   }
   
@@ -142,15 +164,87 @@ class GameProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Places a dragged tile onto the board (drag-and-drop support)
+  void placeDraggedTile(Tile tile, Position position) {
+    if (!isMyTurn) {
+      _setErrorMessage('Not your turn');
+      return;
+    }
+    if (_room?.board.getTileAt(position) != null) {
+      _setErrorMessage('Position already occupied!');
+      return;
+    }
+    if (_pendingPlacements.any((p) => p.position == position)) {
+      _setErrorMessage('Position already has a pending tile!');
+      return;
+    }
+
+    _pendingPlacements.add(PlacedTile(
+      tile: tile.copyWith(isNewlyPlaced: true),
+      position: position,
+    ));
+    _clearMessages();
+    if (_room != null) {
+      final payload = [PlacedTile(tile: tile, position: position).toJson()];
+      _sockets.placeTiles(_room!.id, payload);
+      debugPrint('[emit placeTiles dnd] pos=(${position.row},${position.col})');
+    }
+    notifyListeners();
+  }
   
   /// Validates and submits the current move
   bool submitMove() {
-    if (_pendingPlacements.isEmpty) return false;
-    
-    // Clear pending placements and notify
-    _pendingPlacements.clear();
-    notifyListeners();
-    return true;
+    // Ensure dictionary loaded
+    if (!ArabicDictionary.instance.isReady) {
+      _setErrorMessage('Loading dictionary, please wait...');
+      ArabicDictionary.instance.preload();
+      return false;
+    }
+    if (_pendingPlacements.isEmpty) {
+      _setErrorMessage('No tiles placed!');
+      return false;
+    }
+    if (_room == null || _currentPlayerId == null) {
+      _setErrorMessage('Room not ready');
+      return false;
+    }
+    if (!_isMyTurn) {
+      _setErrorMessage('Not your turn');
+      return false;
+    }
+
+    // Validate using Scrabble rules
+    final validation = ScrabbleGameLogic.validateMove(
+      room: _room!,
+      playerId: _currentPlayerId!,
+      placedTiles: List<PlacedTile>.from(_pendingPlacements),
+    );
+    if (!validation.isValid) {
+      _setErrorMessage(validation.message);
+      return false;
+    }
+
+    // Emit placements to server then submit the move
+    try {
+      final roomId = _room!.id;
+      final placedPayload = _pendingPlacements
+          .map((pt) => pt.toJson())
+          .toList();
+      _sockets.placeTiles(roomId, placedPayload);
+      _sockets.submitMove(roomId, placedTiles: placedPayload);
+
+      // Locally finalize UI state; server will sync room via listeners
+      _isPlacingTiles = false;
+      _pendingPlacements.clear();
+      selectedRackIndex = null;
+      _setSuccessMessage('Move submitted: +${validation.points}');
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setErrorMessage('Failed to submit move');
+      return false;
+    }
   }
   
   /// Gets the current player
@@ -215,9 +309,11 @@ class GameProvider extends ChangeNotifier {
   
   /// Passes the current turn
   void passTurn() {
+    if (_room == null) return;
     _isPlacingTiles = false;
     _pendingPlacements.clear();
     _selectedTiles.clear();
+    _sockets.passTurn(_room!.id);
     _setSuccessMessage('Turn passed');
     notifyListeners();
   }

@@ -43,7 +43,17 @@ class GameControls extends StatelessWidget {
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: game.canSubmitMove() ? () => game.submitMove() : null,
+                onPressed: game.canSubmitMove()
+                    ? () {
+                        final ok = game.submitMove();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(ok ? 'Move submitted' : (game.errorMessage ?? 'Failed to submit')),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    : null,
                 icon: const Icon(Icons.check),
                 label: const Text('Submit'),
                 style: ElevatedButton.styleFrom(
@@ -61,7 +71,17 @@ class GameControls extends StatelessWidget {
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: game.isMyTurn ? () => game.passTurn() : null,
+                onPressed: game.isMyTurn
+                    ? () {
+                        game.passTurn();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Turn passed'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    : null,
                 icon: const Icon(Icons.skip_next),
                 label: const Text('Pass'),
                 style: ElevatedButton.styleFrom(

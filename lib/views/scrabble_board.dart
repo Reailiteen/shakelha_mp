@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/models/position.dart';
+import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/provider/game_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -26,33 +27,49 @@ class ScrabbleBoard extends StatelessWidget {
           final col = index % boardSize;
           final pos = Position(row: row, col: col);
           final tile = game.getTileAt(pos);
-          final isPending = game.hasPendingPlacement(pos);
+          final isPending = game.hasPendingPlacements() && game.pendingPlacements.any((p) => p.position == pos);
+          final pendingTile = isPending
+              ? game.pendingPlacements.firstWhere((p) => p.position == pos).tile
+              : null;
 
-          return GestureDetector(
-            onTap: () {
-              if (game.isMyTurn) {
-                if (isPending) {
-                  game.removePendingPlacement(pos);
-                } else {
-                  game.placeTileOnBoard(pos);
-                }
-              }
+          return DragTarget<Tile>(
+            onWillAccept: (data) => game.isMyTurn && tile == null,
+            onAccept: (draggedTile) {
+              game.placeDraggedTile(draggedTile, pos);
             },
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                color: _cellColor(row, col, isPending),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                tile?.letter ?? '',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+            builder: (context, candidateData, rejectedData) {
+              final isHover = candidateData.isNotEmpty;
+              return GestureDetector(
+                onTap: () {
+                  if (game.isMyTurn) {
+                    if (isPending) {
+                      game.removePendingPlacement(pos);
+                    } else {
+                      game.placeTileOnBoard(pos);
+                    }
+                  }
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    color: isHover ? Colors.yellow.shade100 : _cellColor(row, col, isPending),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    (tile?.letter ?? pendingTile?.letter) ?? '',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.amber.shade800,
+                      shadows: const [
+                        Shadow(offset: Offset(0.5, 0.5), blurRadius: 0.5, color: Colors.black26),
+                      ],
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
                 ),
-                textDirection: TextDirection.rtl,
-              ),
-            ),
+              );
+            },
           );
         },
       ),

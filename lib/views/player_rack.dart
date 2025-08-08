@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/provider/game_provider.dart';
+import 'package:mp_tictactoe/models/tile.dart';
 import 'package:provider/provider.dart';
 
 /// Widget displaying the player's tile rack with Arabic letters
@@ -31,40 +32,17 @@ class PlayerRack extends StatelessWidget {
             final tile = entry.value;
             final isSelected = game.selectedRackIndex == index;
             
-            return GestureDetector(
-              onTap: () => game.selectRackTile(index),
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.yellow.shade200 : Colors.brown.shade50,
-                  border: Border.all(
-                    color: isSelected ? Colors.orange : Colors.brown.shade400,
-                    width: isSelected ? 2 : 1,
-                  ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      tile.letter,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                    Text(
-                      tile.value.toString(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
+            return Draggable<Tile>(
+              data: tile,
+              feedback: _RackTileVisual(tile: tile, highlighted: true),
+              childWhenDragging: Opacity(
+                opacity: 0.3,
+                child: _RackTileVisual(tile: tile, selected: isSelected),
+              ),
+              onDragStarted: () => game.startPlacingTiles(),
+              child: GestureDetector(
+                onTap: () => game.selectRackTile(index),
+                child: _RackTileVisual(tile: tile, selected: isSelected),
               ),
             );
           }).toList(),
@@ -84,5 +62,55 @@ class PlayerRack extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _RackTileVisual extends StatelessWidget {
+  final Tile tile;
+  final bool selected;
+  final bool highlighted;
+  const _RackTileVisual({Key? key, required this.tile, this.selected = false, this.highlighted = false}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: highlighted
+                      ? Colors.yellow.shade300
+                      : (selected ? Colors.yellow.shade200 : Colors.brown.shade50),
+                  border: Border.all(
+                    color: selected ? Colors.orange : Colors.brown.shade400,
+                    width: selected ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      tile.letter,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.amber.shade800,
+                        shadows: const [
+                          Shadow(offset: Offset(0.5, 0.5), blurRadius: 0.5, color: Colors.black26),
+                        ],
+                      ),
+                      textDirection: TextDirection.rtl,
+                    ),
+                    Text(
+                      tile.value.toString(),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              );
   }
 }

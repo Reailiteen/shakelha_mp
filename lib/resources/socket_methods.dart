@@ -61,11 +61,12 @@ class SocketMethods {
     });
   }
   
-  /// Submits the current move
-  void submitMove(String roomId) {
-    _socketClient.emit('submitMove', {
-      'roomId': roomId,
-    });
+  /// Submits the current move (optionally with placedTiles payload)
+  void submitMove(String roomId, {List<Map<String, dynamic>>? placedTiles}) {
+    final payload = <String, dynamic>{'roomId': roomId};
+    if (placedTiles != null) payload['placedTiles'] = placedTiles;
+    debugPrint('[emit submitMove] roomId=' + roomId + (placedTiles == null ? '' : ', placedTiles=' + placedTiles.length.toString()));
+    _socketClient.emit('submitMove', payload);
   }
   
   /// Cancels the current move and returns tiles to the rack
@@ -203,17 +204,18 @@ class SocketMethods {
       final provider = Provider.of<RoomDataProvider>(context, listen: false);
       final current = provider.room;
       if (current != null) {
-        // Merge: keep local board, bag, and racks; update metadata from server
+        // Merge: prefer incoming board and racks; keep local bag; fallback to existing rack only if incoming has none
         final mergedPlayers = incoming.players.map((pIn) {
           final existing = current.players.firstWhere(
             (p) => p.id == pIn.id,
             orElse: () => pIn,
           );
-          final rack = existing.rack.isNotEmpty ? existing.rack : pIn.rack;
+          final useIncomingRack = pIn.rack.isNotEmpty;
+          final rack = useIncomingRack ? pIn.rack : existing.rack;
           return pIn.copyWith(rack: rack);
         }).toList();
         incoming = incoming.copyWith(
-          board: current.board,
+          board: incoming.board, // accept server board updates
           letterDistribution: current.letterDistribution,
           players: mergedPlayers,
         );

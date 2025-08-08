@@ -8,6 +8,7 @@ import 'package:mp_tictactoe/views/waiting_lobby.dart';
 import 'package:mp_tictactoe/views/player_rack.dart';
 import 'package:mp_tictactoe/views/game_controls.dart';
 import 'package:provider/provider.dart';
+import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 
 class GameScreen extends StatefulWidget {
   static String routeName = '/game';
@@ -23,6 +24,8 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    // Preload dictionary for fast word validation
+    ArabicDictionary.instance.preload();
     _socketMethods.updateRoomListener(context);
     _socketMethods.tilesPlacedListener(context);
     _socketMethods.moveSubmittedListener(context);
