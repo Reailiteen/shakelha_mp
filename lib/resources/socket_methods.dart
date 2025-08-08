@@ -1,8 +1,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/models/room.dart';
+import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/models/board.dart';
-import 'package:mp_tictactoe/models/letterDistribution.dart';
+import 'package:mp_tictactoe/models/letter_distribution.dart';
+import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/provider/room_data_provider.dart';
 import 'package:mp_tictactoe/resources/socket_client.dart';
 import 'package:mp_tictactoe/screens/game_screen.dart';
@@ -53,6 +55,7 @@ class SocketMethods {
   
   /// Passes the current turn
   void passTurn(String roomId) {
+    debugPrint('[emit passTurn] roomId=' + roomId);
     _socketClient.emit('passTurn', {
       'roomId': roomId,
     });
@@ -109,10 +112,10 @@ class SocketMethods {
       'maxPlayers': map['maxRounds'] is int ? 2 : (map['maxPlayers'] ?? 2),
       'players': players,
       'board': Board.empty().toJson(),
-      'letterDistribution': LetterDistribution.english().toJson(),
+      'letterDistribution': LetterDistribution().toJson(),
       'currentPlayerIndex': currentIdx,
       'moveHistory': <dynamic>[],
-      'hasGameStarted': players.length >= 1,
+      'hasGameStarted': players.length > 1,
       'hasGameEnded': false,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
@@ -122,16 +125,25 @@ class SocketMethods {
   }
   void createRoomSuccessListener(BuildContext context) {
     _socketClient.on('createRoomSuccess', (roomData) {
+      debugPrint('[createRoomSuccess] raw payload: ' + roomData.toString());
       var room = Room.fromJson(_normalizeRoom(roomData));
+      debugPrint('[createRoomSuccess] normalized: id=' + room.id +
+          ', players=' + room.players.length.toString() +
+          ', started=' + room.hasGameStarted.toString());
       // Deal initial racks if empty
       if (room.players.every((p) => p.rack.isEmpty)) {
         final ld = room.letterDistribution; // mutable bag
-        final newPlayers = room.players.map((p) {
+        final List<Player> players = room.players;
+        final newPlayers = players.map((p) {
           final need = 7 - p.rack.length;
-          final tiles = need > 0 ? ld.drawTiles(need, ownerId: p.id) : <dynamic>[];
-          return p.updateRack([...p.rack, ...tiles]);
+          final List<Tile> drawn = need > 0 ? ld.drawTiles(need) : <Tile>[];
+          final owned = drawn.map((t) => t.copyWith(ownerId: p.id)).toList();
+          return p.updateRack([...p.rack, ...owned]);
         }).toList();
         room = room.copyWith(players: newPlayers, letterDistribution: ld);
+      }
+      for (final p in room.players) {
+        debugPrint('[createRoomSuccess] rack ${p.nickname} size=' + p.rack.length.toString());
       }
       Provider.of<RoomDataProvider>(context, listen: false).updateRoom(room);
       Navigator.pushNamed(context, GameScreen.routeName);
@@ -140,16 +152,25 @@ class SocketMethods {
 
   void joinRoomSuccessListener(BuildContext context) {
     _socketClient.on('joinRoomSuccess', (roomData) {
+      debugPrint('[joinRoomSuccess] raw payload: ' + roomData.toString());
       var room = Room.fromJson(_normalizeRoom(roomData));
+      debugPrint('[joinRoomSuccess] normalized: id=' + room.id +
+          ', players=' + room.players.length.toString() +
+          ', started=' + room.hasGameStarted.toString());
       // Ensure racks are dealt at join time if missing
       if (room.players.any((p) => p.rack.isEmpty)) {
         final ld = room.letterDistribution;
-        final newPlayers = room.players.map((p) {
+        final List<Player> players = room.players;
+        final newPlayers = players.map((p) {
           final need = 7 - p.rack.length;
-          final tiles = need > 0 ? ld.drawTiles(need, ownerId: p.id) : <dynamic>[];
-          return p.updateRack([...p.rack, ...tiles]);
+          final List<Tile> drawn = need > 0 ? ld.drawTiles(need) : <Tile>[];
+          final owned = drawn.map((t) => t.copyWith(ownerId: p.id)).toList();
+          return p.updateRack([...p.rack, ...owned]);
         }).toList();
         room = room.copyWith(players: newPlayers, letterDistribution: ld);
+      }
+      for (final p in room.players) {
+        debugPrint('[joinRoomSuccess] rack ${p.nickname} size=' + p.rack.length.toString());
       }
       Provider.of<RoomDataProvider>(context, listen: false).updateRoom(room);
       Navigator.pushNamed(context, GameScreen.routeName);
@@ -170,6 +191,7 @@ class SocketMethods {
 
   void errorOccuredListener(BuildContext context) {
     _socketClient.on('errorOccurred', (data) {
+      debugPrint('[socket errorOccurred] payload: ' + data.toString());
       showSnackBar(context, data);
     });
   }
@@ -177,9 +199,43 @@ class SocketMethods {
   /// Listens for updates to the game room
   void updateRoomListener(BuildContext context) {
     _socketClient.on('updateRoom', (roomData) {
-      final room = Room.fromJson(_normalizeRoom(roomData));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var incoming = Room.fromJson(_normalizeRoom(roomData));
+      final provider = Provider.of<RoomDataProvider>(context, listen: false);
+      final current = provider.room;
+      if (current != null) {
+        // Merge: keep local board, bag, and racks; update metadata from server
+        final mergedPlayers = incoming.players.map((pIn) {
+          final existing = current.players.firstWhere(
+            (p) => p.id == pIn.id,
+            orElse: () => pIn,
+          );
+          final rack = existing.rack.isNotEmpty ? existing.rack : pIn.rack;
+          return pIn.copyWith(rack: rack);
+        }).toList();
+        incoming = incoming.copyWith(
+          board: current.board,
+          letterDistribution: current.letterDistribution,
+          players: mergedPlayers,
+        );
+        // If any rack still empty, deal from local bag
+        if (incoming.players.any((p) => p.rack.isEmpty)) {
+          final ld = incoming.letterDistribution;
+          final dealt = incoming.players.map((p) {
+            if (p.rack.isEmpty) {
+              final need = 7;
+              final drawn = ld.drawTiles(need);
+              final owned = drawn.map((t) => t.copyWith(ownerId: p.id)).toList();
+              return p.updateRack(owned);
+            }
+            return p;
+          }).toList();
+          incoming = incoming.copyWith(players: dealt, letterDistribution: ld);
+        }
+        for (final p in incoming.players) {
+          debugPrint('[updateRoom merge] rack ${p.nickname} size=' + p.rack.length.toString());
+        }
+      }
+      provider.updateRoom(incoming);
     });
   }
 
@@ -232,6 +288,7 @@ class SocketMethods {
   /// Listens for error messages
   void errorOccurredListener(BuildContext context) {
     _socketClient.on('errorOccurred', (data) {
+      debugPrint('[socket errorOccurred] payload: ' + data.toString());
       try {
         if (data is String) {
           showSnackBar(context, data);

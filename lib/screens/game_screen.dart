@@ -38,14 +38,17 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     RoomDataProvider roomDataProvider = Provider.of<RoomDataProvider>(context);
 
+    final room = roomDataProvider.room;
+    final waiting = room == null || (room.players.length < 2);
+
     return Scaffold(
-      appBar: roomDataProvider.room == null
+      appBar: waiting
           ? null
           : AppBar(
-              title: Text('Room: ${roomDataProvider.room!.id}'),
+              title: Text('Room: ${room!.id}'),
               centerTitle: true,
             ),
-      body: roomDataProvider.room == null
+      body: waiting
           ? const WaitingLobby()
           : ChangeNotifierProvider<GameProvider>(
               create: (_) => GameProvider(),

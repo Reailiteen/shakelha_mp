@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:uuid/uuid.dart';
 
 import 'board.dart';
-import 'letterDistribution.dart';
+import 'letter_distribution.dart';
 import 'player.dart';
 import 'move.dart';
 
@@ -122,7 +122,7 @@ class Room {
   }) {
     final now = DateTime.now();
     final board = Board.empty();
-    final letterDistribution = LetterDistribution.english();
+    final letterDistribution = LetterDistribution();
     
     return Room(
       id: const Uuid().v4(),
@@ -238,7 +238,9 @@ class Room {
     // Deal initial tiles to players
     final newLetterDistribution = letterDistribution;
     final newPlayers = players.map((player) {
-      final tiles = newLetterDistribution.drawTiles(7, ownerId: player.id);
+      final tiles = newLetterDistribution.drawTiles(7)
+          .map((t) => t.copyWith(ownerId: player.id))
+          .toList();
       return player.updateRack(tiles);
     }).toList();
     
@@ -303,7 +305,9 @@ class Room {
     
     // Draw new tiles if needed
     final tilesToDraw = min(move.placedTiles.length, letterDistribution.tilesRemaining);
-    final newTiles = letterDistribution.drawTiles(tilesToDraw, ownerId: player.id);
+    final newTiles = letterDistribution.drawTiles(tilesToDraw)
+        .map((t) => t.copyWith(ownerId: player.id))
+        .toList();
     final finalPlayer = newPlayer.updateRack([...newPlayer.rack, ...newTiles]);
     
     // Update players list
