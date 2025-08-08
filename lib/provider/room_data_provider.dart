@@ -10,6 +10,8 @@ class RoomDataProvider extends ChangeNotifier {
     socketID: '',
     points: 0,
     playerType: 'X',
+    moves: [],
+    currentLetters: [],
   );
 
   Player _player2 = Player(
@@ -17,6 +19,8 @@ class RoomDataProvider extends ChangeNotifier {
     socketID: '',
     points: 0,
     playerType: 'O',
+    moves: [],
+    currentLetters: [],
   );
 
   Map<String, dynamic> get roomData => _roomData;
