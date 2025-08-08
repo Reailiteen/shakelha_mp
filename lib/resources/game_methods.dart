@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/letter.dart';
+import 'package:mp_tictactoe/models/tile.dart';
 
 class GameMethods {
   bool validateWordPlacement({
-    required List<List<Letter?>> board,
+    required List<List<Tile?>> board,
     required Set<String> validWords,
     required bool isFirstMove,
   }) {
@@ -15,7 +15,7 @@ class GameMethods {
     // 1. Collect newly placed tile positions
     for (int row = 0; row < boardSize; row++) {
       for (int col = 0; col < boardSize; col++) {
-        if (board[row][col]?.isNew == true) {
+        if (board[row][col]?.isNewlyPlaced == true) {
           placedOffsets.add(Offset(row.toDouble(), col.toDouble()));
         }
       }
@@ -43,14 +43,14 @@ class GameMethods {
           if (x < boardSize - 1) board[x + 1][y],
           if (y > 0) board[x][y - 1],
           if (y < boardSize - 1) board[x][y + 1],
-        ].any((t) => t != null && !t.isNew);
+        ].any((t) => t != null && !t.isNewlyPlaced);
       });
 
       if (!isConnected) return false;
     }
 
     // 5. Get primary word
-    List<Letter> primaryWordTiles = [];
+    List<Tile> primaryWordTiles = [];
     Offset start = placedOffsets.first;
     int startX = start.dx.toInt();
     int startY = start.dy.toInt();
@@ -90,7 +90,7 @@ class GameMethods {
       int x = pos.dx.toInt();
       int y = pos.dy.toInt();
 
-      List<Letter> word = [];
+      List<Tile> word = [];
 
       if (sameRow) {
         // check vertical word

@@ -42,6 +42,21 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("cancelMove", async ({ roomId }) => {
+    try {
+      let room = await Room.findById(roomId);
+      if (!room) {
+        socket.emit("errorOccurred", "Room not found");
+        return;
+      }
+      // No server-side changes yet; emit room to allow clients to reset local state
+      io.to(roomId).emit("updateRoom", room);
+    } catch (e) {
+      console.log(e);
+      socket.emit("errorOccurred", "Failed to cancel move");
+    }
+  });
+
   socket.on("joinRoom", async ({ nickname, roomId }) => {
     try {
       if (!roomId.match(/^[0-9a-fA-F]{24}$/)) {
@@ -74,11 +89,40 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("tap", async ({ index, roomId }) => {
+  // Scrabble game events
+  socket.on("placeTiles", async ({ roomId, placedTiles }) => {
     try {
       let room = await Room.findById(roomId);
+      if (!room) {
+        socket.emit("errorOccurred", "Room not found");
+        return;
+      }
 
-      let choice = room.turn.playerType; // x or o
+      // Update board with placed tiles
+      placedTiles.forEach(tile => {
+        const { row, col, letter, points } = tile;
+        if (room.board && room.board[row] && room.board[row][col]) {
+          room.board[row][col] = { letter, points, isNewlyPlaced: true };
+        }
+      });
+
+      room = await room.save();
+      io.to(roomId).emit("tilesPlaced", { room, placedTiles });
+    } catch (e) {
+      console.log(e);
+      socket.emit("errorOccurred", "Failed to place tiles");
+    }
+  });
+
+  socket.on("submitMove", async ({ roomId }) => {
+    try {
+      let room = await Room.findById(roomId);
+      if (!room) {
+        socket.emit("errorOccurred", "Room not found");
+        return;
+      }
+
+      // Switch turns
       if (room.turnIndex == 0) {
         room.turn = room.players[1];
         room.turnIndex = 1;
@@ -86,14 +130,56 @@ io.on("connection", (socket) => {
         room.turn = room.players[0];
         room.turnIndex = 0;
       }
+
       room = await room.save();
-      io.to(roomId).emit("tapped", {
-        index,
-        choice,
-        room,
-      });
+      io.to(roomId).emit("moveSubmitted", { room });
     } catch (e) {
       console.log(e);
+      socket.emit("errorOccurred", "Failed to submit move");
+    }
+  });
+
+  socket.on("passTurn", async ({ roomId }) => {
+    try {
+      let room = await Room.findById(roomId);
+      if (!room) {
+        socket.emit("errorOccurred", "Room not found");
+        return;
+      }
+
+      // Switch turns
+      if (room.turnIndex == 0) {
+        room.turn = room.players[1];
+        room.turnIndex = 1;
+      } else {
+        room.turn = room.players[0];
+        room.turnIndex = 0;
+      }
+
+      room = await room.save();
+      io.to(roomId).emit("turnPassed", { room });
+    } catch (e) {
+      console.log(e);
+      socket.emit("errorOccurred", "Failed to pass turn");
+    }
+  });
+
+  socket.on("exchangeTiles", async ({ roomId, tileIds }) => {
+    try {
+      let room = await Room.findById(roomId);
+      if (!room) {
+        socket.emit("errorOccurred", "Room not found");
+        return;
+      }
+
+      // Handle tile exchange logic here
+      // This would involve removing tiles from player's rack and drawing new ones
+      
+      room = await room.save();
+      io.to(roomId).emit("tilesExchanged", { room, exchangedTileIds: tileIds });
+    } catch (e) {
+      console.log(e);
+      socket.emit("errorOccurred", "Failed to exchange tiles");
     }
   });
 

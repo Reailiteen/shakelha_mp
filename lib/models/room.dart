@@ -1,13 +1,10 @@
 import 'dart:math';
-import 'package:meta/meta.dart';
 import 'package:uuid/uuid.dart';
 
 import 'board.dart';
 import 'letterDistribution.dart';
 import 'player.dart';
-import 'tile.dart';
 import 'move.dart';
-import 'position.dart';
 
 /// Represents a game room where players can join and play
 class Room {
@@ -29,8 +26,14 @@ class Room {
   /// The letter distribution for this game
   final LetterDistribution letterDistribution;
   
+  /// The ID of the current player
+  final String? currentPlayerId;
+  
   /// The index of the current player in the players list
   final int currentPlayerIndex;
+  
+  /// Whether this is the first move of the game
+  final bool isFirstMove;
   
   /// The list of moves made in the current game
   final List<Move> moveHistory;
@@ -53,26 +56,63 @@ class Room {
   /// The ID of the player who created the room
   final String createdBy;
 
-   Room({
-    required this.id,
+  /// Gets the current player
+  Player? get currentPlayer => 
+      currentPlayerId == null ? null : getPlayer(currentPlayerId!);
+  
+  /// Gets a player by ID
+  Player? getPlayer(String playerId) {
+    return players.firstWhereOrNull((p) => p.id == playerId);
+  }
+  
+  /// Gets the opponent of a player
+  Player? getOpponent(String playerId) {
+    if (players.length < 2) return null;
+    return players.firstWhere((p) => p.id != playerId);
+  }
+  
+  /// Creates a new room with the given parameters
+  Room({
+    String? id,
     required this.name,
-    required this.maxPlayers,
+    this.maxPlayers = 2,
     required this.players,
     required this.board,
     required this.letterDistribution,
+    this.currentPlayerId,
     this.currentPlayerIndex = 0,
-    List<Move>? moveHistory,
+    this.isFirstMove = true,
+    this.moveHistory = const [],
     this.hasGameStarted = false,
     this.hasGameEnded = false,
     DateTime? createdAt,
     DateTime? updatedAt,
     RoomSettings? settings,
     required this.createdBy,
-  })  : moveHistory = moveHistory ?? const [],
+  })  : id = id ?? const Uuid().v4(),
+        settings = settings ?? const RoomSettings(),
         createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now(),
-        settings = settings ?? const RoomSettings();
+        updatedAt = updatedAt ?? DateTime.now();
 
+  // Private constructor for copyWith
+  Room._({
+    required this.id,
+    required this.name,
+    required this.maxPlayers,
+    required this.players,
+    required this.board,
+    required this.letterDistribution,
+    this.currentPlayerId,
+    required this.currentPlayerIndex,
+    required this.isFirstMove,
+    required this.moveHistory,
+    required this.hasGameStarted,
+    required this.hasGameEnded,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.settings,
+    required this.createdBy,
+  });
   /// Creates a new room with the given name and creator
   factory Room.create({
     required String name,
@@ -145,24 +185,8 @@ class Room {
     };
   }
   
-  /// Gets the current player whose turn it is
-  Player get currentPlayer => players[currentPlayerIndex];
-  
-  /// Gets the number of players in the room
-  int get playerCount => players.length;
-  
-  /// Checks if the room is full
-  bool get isFull => playerCount >= maxPlayers;
-  
-  /// Checks if the room is empty
-  bool get isEmpty => players.isEmpty;
-  
-  /// Gets the creator of the room
-  Player? get creator => players.firstWhereOrNull((p) => p.id == createdBy);
-  
-  /// Adds a player to the room
-  /// Returns a new Room with the player added
-  Room addPlayer(Player player) {
+  /// Returns a new Room with the specified player added
+  Room withPlayerAdded(Player player) {
     if (isFull) {
       throw StateError('Room is full');
     }
@@ -177,9 +201,8 @@ class Room {
     );
   }
   
-  /// Removes a player from the room
-  /// Returns a new Room with the player removed
-  Room removePlayer(String playerId) {
+  /// Returns a new Room with the specified player removed
+  Room withPlayerRemoved(String playerId) {
     final newPlayers = players.where((p) => p.id != playerId).toList();
     
     // If creator leaves, assign new creator
@@ -202,9 +225,8 @@ class Room {
     );
   }
   
-  /// Starts the game if conditions are met
   /// Returns a new Room with the game started
-  Room startGame() {
+  Room withGameStarted() {
     if (hasGameStarted) {
       throw StateError('Game has already started');
     }
@@ -228,6 +250,33 @@ class Room {
     );
   }
   
+  /// Gets the number of players in the room
+  int get playerCount => players.length;
+  
+  /// Checks if the room is full
+  bool get isFull => playerCount >= maxPlayers;
+  
+  /// Checks if the room is empty
+  bool get isEmpty => players.isEmpty;
+  
+  /// Gets the creator of the room
+  Player? get creator => players.firstWhereOrNull((p) => p.id == createdBy);
+  
+  /// Adds a player to the room
+  /// Returns a new Room with the player added
+  @Deprecated('Use withPlayerAdded instead')
+  Room addPlayer(Player player) => withPlayerAdded(player);
+  
+  /// Removes a player from the room
+  /// Returns a new Room with the player removed
+  @Deprecated('Use withPlayerRemoved instead')
+  Room removePlayer(String playerId) => withPlayerRemoved(playerId);
+  
+  /// Starts the game if conditions are met
+  /// Returns a new Room with the game started
+  @Deprecated('Use withGameStarted instead')
+  Room startGame() => withGameStarted();
+  
   /// Makes a move in the game
   /// Returns a new Room with the move applied
   Room makeMove(Move move) {
@@ -235,7 +284,7 @@ class Room {
       throw StateError('Game is not in progress');
     }
     
-    if (move.playerId != currentPlayer.id) {
+    if (move.playerId != currentPlayer?.id) {
       throw StateError('Not your turn');
     }
     

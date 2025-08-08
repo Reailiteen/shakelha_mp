@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'tile.dart';
 import 'move.dart';
 import 'user.dart';
@@ -129,7 +128,7 @@ class Player {
   Player addMove(Move move) {
     return copyWith(
       moves: [...moves, move],
-      score: score + (move.points ?? 0),
+      score: score + (move.points),
     );
   }
   

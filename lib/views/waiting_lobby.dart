@@ -16,9 +16,9 @@ class _WaitingLobbyState extends State<WaitingLobby> {
   @override
   void initState() {
     super.initState();
+    final room = Provider.of<RoomDataProvider>(context, listen: false).room;
     roomIdController = TextEditingController(
-      text:
-          Provider.of<RoomDataProvider>(context, listen: false).roomData['_id'],
+      text: room?.id ?? '',
     );
   }
 
@@ -30,6 +30,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
 
   @override
   Widget build(BuildContext context) {
+    final room = Provider.of<RoomDataProvider>(context).room;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -40,6 +41,11 @@ class _WaitingLobbyState extends State<WaitingLobby> {
           hintText: '',
           isReadOnly: true,
         ),
+        if ((room?.players.length ?? 1) < 2)
+          const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text('Share Room ID with a friend to join'),
+          ),
       ],
     );
   }

@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 import 'tile.dart';
 import 'position.dart';
 
@@ -107,22 +106,22 @@ class Board {
     };
   }
   
-  /// Gets the tile at the specified position, or null if empty
-  Tile? getTile(Position pos) {
-    if (!_isValidPosition(pos)) return null;
-    return grid[pos.row][pos.col];
+  /// Gets the tile at the specified position
+  Tile? getTileAt(Position position) {
+    if (!_isValidPosition(position)) return null;
+    return grid[position.row][position.col];
   }
   
-  /// Places a tile on the board at the specified position
+  /// Places a tile at the specified position
   /// Returns a new Board with the tile placed
-  Board placeTile(Tile tile, Position pos) {
-    if (!_isValidPosition(pos)) return this;
+  Board placeTile(Tile tile, Position position) {
+    if (!_isValidPosition(position)) return this;
     
     final newGrid = List<List<Tile?>>.from(
       grid.map((row) => List<Tile?>.from(row)),
     );
     
-    newGrid[pos.row][pos.col] = tile.copyWith(isOnBoard: true);
+    newGrid[position.row][position.col] = tile;
     
     return Board(
       size: size,
@@ -131,28 +130,83 @@ class Board {
     );
   }
   
-  /// Removes a tile from the board at the specified position
-  /// Returns the removed tile, or null if the position was empty
-  (Board, Tile?) removeTile(Position pos) {
-    if (!_isValidPosition(pos) || grid[pos.row][pos.col] == null) {
-      return (this, null);
+  /// Removes a tile from the specified position
+  /// Returns a new Board with the tile removed
+  Board removeTile(Position position) {
+    if (!_isValidPosition(position) || getTileAt(position) == null) {
+      return this;
     }
     
     final newGrid = List<List<Tile?>>.from(
       grid.map((row) => List<Tile?>.from(row)),
     );
     
-    final removedTile = newGrid[pos.row][pos.col];
-    newGrid[pos.row][pos.col] = null;
+    newGrid[position.row][position.col] = null;
     
-    return (
-      Board(
-        size: size,
-        grid: newGrid,
-        cellMultipliers: cellMultipliers,
-      ),
-      removedTile,
+    return Board(
+      size: size,
+      grid: newGrid,
+      cellMultipliers: cellMultipliers,
     );
+  }
+  
+  /// Gets all the tiles on the board with their positions
+  Map<Position, Tile> getAllTiles() {
+    final tiles = <Position, Tile>{};
+    
+    for (var row = 0; row < size; row++) {
+      for (var col = 0; col < size; col++) {
+        final tile = grid[row][col];
+        if (tile != null) {
+          tiles[Position(row: row, col: col)] = tile;
+        }
+      }
+    }
+    
+    return tiles;
+  }
+  
+  /// Gets all empty positions adjacent to existing tiles
+  Set<Position> getEmptyAdjacentPositions() {
+    final emptyAdjacent = <Position>{};
+    final directions = [
+      Position(row: -1, col: 0), // up
+      Position(row: 1, col: 0),  // down
+      Position(row: 0, col: -1), // left
+      Position(row: 0, col: 1),  // right
+    ];
+    
+    // First, find all positions with tiles
+    final tilePositions = <Position>[];
+    for (var row = 0; row < size; row++) {
+      for (var col = 0; col < size; col++) {
+        if (grid[row][col] != null) {
+          tilePositions.add(Position(row: row, col: col));
+        }
+      }
+    }
+    
+    // If no tiles, return center position for first move
+    if (tilePositions.isEmpty) {
+      final center = size ~/ 2;
+      return {Position(row: center, col: center)};
+    }
+    
+    // Find all empty adjacent positions
+    for (final pos in tilePositions) {
+      for (final dir in directions) {
+        final newPos = Position(
+          row: pos.row + dir.row,
+          col: pos.col + dir.col,
+        );
+        
+        if (_isValidPosition(newPos) && getTileAt(newPos) == null) {
+          emptyAdjacent.add(newPos);
+        }
+      }
+    }
+    
+    return emptyAdjacent;
   }
   
   /// Checks if a position is within the bounds of the board

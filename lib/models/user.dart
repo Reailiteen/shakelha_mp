@@ -1,4 +1,3 @@
-import 'package:meta/meta.dart';
 
 /// Represents a user account in the game system.
 class User {
@@ -35,7 +34,7 @@ class User {
   /// When the user was last active
   final DateTime lastActiveAt;
 
-  const User({
+  User({
     required this.id,
     required this.username,
     required this.email,
