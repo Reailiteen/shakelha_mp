@@ -6,14 +6,14 @@ const mongoose = require("mongoose");
 const app = express();
 const port = process.env.PORT || 3000;
 var server = http.createServer(app);
-const Room = require("./models/room");
+const Room = require("./server/models/room");
 var io = require("socket.io")(server);
 
 // middle ware
 app.use(express.json());
-
-const DB =
-  "mongodb+srv://ayhamdwairy:Password123@cluster0.ep6i2nd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const username = process.env.USERNAME;
+const password = process.env.PASSWORD;
+const DB = `mongodb+srv://${username}:${password}@cluster0.ep6i2nd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 io.on("connection", (socket) => {
   console.log("connected!");
