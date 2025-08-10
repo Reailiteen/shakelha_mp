@@ -76,6 +76,26 @@ class SocketMethods {
     });
   }
 
+  /// Broadcasts a live hover/preview of a tile over a board position
+  /// Payload example: { roomId, hover: { letter, row, col } }
+  void hoverTile(String roomId, {required String letter, required int row, required int col}) {
+    _socketClient.emit('hoverTile', {
+      'roomId': roomId,
+      'hover': {
+        'letter': letter,
+        'row': row,
+        'col': col,
+      }
+    });
+  }
+
+  /// Clears the current hover/preview for this client
+  void clearHover(String roomId) {
+    _socketClient.emit('clearHover', {
+      'roomId': roomId,
+    });
+  }
+
   // LISTENERS
   // Normalizes server (Mongo) room payload into our Room model JSON
   Map<String, dynamic> _normalizeRoom(dynamic roomData) {
@@ -241,39 +261,134 @@ class SocketMethods {
     });
   }
 
+  /// Mirrors opponent hover previews in the local UI
+  void hoverUpdateListener(BuildContext context) {
+    _socketClient.on('hoverUpdate', (data) {
+      try {
+        final socketId = data['socketId'] as String?;
+        final hover = data['hover'] as Map?;
+        if (socketId != null && hover != null) {
+          final letter = (hover['letter'] ?? '') as String;
+          final row = (hover['row'] ?? -1) as int;
+          final col = (hover['col'] ?? -1) as int;
+          Provider.of<RoomDataProvider>(context, listen: false)
+              .updateRemoteHover(socketId: socketId, letter: letter, row: row, col: col);
+        }
+      } catch (_) {}
+    });
+
+    _socketClient.on('hoverCleared', (data) {
+      try {
+        final socketId = (data is Map) ? data['socketId'] as String? : data as String?;
+        if (socketId != null) {
+          Provider.of<RoomDataProvider>(context, listen: false)
+              .clearRemoteHover(socketId);
+        }
+      } catch (_) {}
+    });
+  }
+
   /// Listens for tiles placed on the server and updates the full room state
   void tilesPlacedListener(BuildContext context) {
     _socketClient.on('tilesPlaced', (data) {
-      final room = Room.fromJson(_normalizeRoom(data['room']));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var incoming = Room.fromJson(_normalizeRoom(data['room']));
+      final provider = Provider.of<RoomDataProvider>(context, listen: false);
+      final current = provider.room;
+      if (current != null) {
+        final mergedPlayers = incoming.players.map((pIn) {
+          final existing = current.players.firstWhere(
+            (p) => p.id == pIn.id,
+            orElse: () => pIn,
+          );
+          final useIncomingRack = pIn.rack.isNotEmpty;
+          final rack = useIncomingRack ? pIn.rack : existing.rack;
+          return pIn.copyWith(rack: rack);
+        }).toList();
+        incoming = incoming.copyWith(
+          board: incoming.board,
+          letterDistribution: current.letterDistribution,
+          players: mergedPlayers,
+        );
+      }
+      provider.updateRoom(incoming);
     });
   }
   
   /// Listens for move submission and updates room/turn
   void moveSubmittedListener(BuildContext context) {
     _socketClient.on('moveSubmitted', (data) {
-      final room = Room.fromJson(_normalizeRoom(data['room']));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var incoming = Room.fromJson(_normalizeRoom(data['room']));
+      final provider = Provider.of<RoomDataProvider>(context, listen: false);
+      final current = provider.room;
+      if (current != null) {
+        final mergedPlayers = incoming.players.map((pIn) {
+          final existing = current.players.firstWhere(
+            (p) => p.id == pIn.id,
+            orElse: () => pIn,
+          );
+        	final useIncomingRack = pIn.rack.isNotEmpty;
+          final rack = useIncomingRack ? pIn.rack : existing.rack;
+          return pIn.copyWith(rack: rack);
+        }).toList();
+        incoming = incoming.copyWith(
+          board: incoming.board,
+          letterDistribution: current.letterDistribution,
+          players: mergedPlayers,
+        );
+      }
+      provider.updateRoom(incoming);
     });
   }
   
   /// Listens for turn pass and updates room/turn
   void turnPassedListener(BuildContext context) {
     _socketClient.on('turnPassed', (data) {
-      final room = Room.fromJson(_normalizeRoom(data['room']));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var incoming = Room.fromJson(_normalizeRoom(data['room']));
+      final provider = Provider.of<RoomDataProvider>(context, listen: false);
+      final current = provider.room;
+      if (current != null) {
+        final mergedPlayers = incoming.players.map((pIn) {
+          final existing = current.players.firstWhere(
+            (p) => p.id == pIn.id,
+            orElse: () => pIn,
+          );
+          final useIncomingRack = pIn.rack.isNotEmpty;
+          final rack = useIncomingRack ? pIn.rack : existing.rack;
+          return pIn.copyWith(rack: rack);
+        }).toList();
+        incoming = incoming.copyWith(
+          board: incoming.board,
+          letterDistribution: current.letterDistribution,
+          players: mergedPlayers,
+        );
+      }
+      provider.updateRoom(incoming);
     });
   }
   
   /// Listens for tile exchanges and updates room state
   void tilesExchangedListener(BuildContext context) {
     _socketClient.on('tilesExchanged', (data) {
-      final room = Room.fromJson(_normalizeRoom(data['room']));
-      Provider.of<RoomDataProvider>(context, listen: false)
-          .updateRoom(room);
+      var incoming = Room.fromJson(_normalizeRoom(data['room']));
+      final provider = Provider.of<RoomDataProvider>(context, listen: false);
+      final current = provider.room;
+      if (current != null) {
+        final mergedPlayers = incoming.players.map((pIn) {
+          final existing = current.players.firstWhere(
+            (p) => p.id == pIn.id,
+            orElse: () => pIn,
+          );
+          // For exchanges, incoming should have racks; fallback if missing
+          final rack = pIn.rack.isNotEmpty ? pIn.rack : existing.rack;
+          return pIn.copyWith(rack: rack);
+        }).toList();
+        incoming = incoming.copyWith(
+          board: incoming.board,
+          letterDistribution: current.letterDistribution,
+          players: mergedPlayers,
+        );
+      }
+      provider.updateRoom(incoming);
     });
   }
   

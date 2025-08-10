@@ -7,6 +7,7 @@ import 'package:mp_tictactoe/provider/game_provider.dart';
 import 'package:mp_tictactoe/views/waiting_lobby.dart';
 import 'package:mp_tictactoe/views/player_rack.dart';
 import 'package:mp_tictactoe/views/game_controls.dart';
+import 'package:mp_tictactoe/views/move_history.dart';
 import 'package:provider/provider.dart';
 import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 
@@ -27,6 +28,7 @@ class _GameScreenState extends State<GameScreen> {
     // Preload dictionary for fast word validation
     ArabicDictionary.instance.preload();
     _socketMethods.updateRoomListener(context);
+    _socketMethods.hoverUpdateListener(context);
     _socketMethods.tilesPlacedListener(context);
     _socketMethods.moveSubmittedListener(context);
     _socketMethods.turnPassedListener(context);
@@ -48,7 +50,7 @@ class _GameScreenState extends State<GameScreen> {
       appBar: waiting
           ? null
           : AppBar(
-              title: Text('Room: ${room!.id}'),
+              title: Text('Room: ${room.id}'),
               centerTitle: true,
             ),
       body: waiting
@@ -72,27 +74,100 @@ class _GameScreenState extends State<GameScreen> {
                   game.setCurrentPlayerId((me ?? room.players.first).id);
                 });
                 return SafeArea(
-                  child: Column(
-                    children: [
-                      const Scoreboard(),
-                      const Expanded(child: ScrabbleBoard()),
-                      Builder(builder: (context) {
-                        final g = context.watch<GameProvider>();
-                        final r = g.room;
-                        String turnLabel = 'Waiting...';
-                        if (r != null && r.players.isNotEmpty) {
-                          final idx = r.currentPlayerIndex;
-                          final name = r.players[idx].nickname;
-                          turnLabel = "$name's turn";
-                        }
-                        return Text(
-                          turnLabel,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 800;
+                      // final board = const Expanded(child: ScrabbleBoard());
+                      final controls = Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Builder(builder: (context) {
+                            final g = context.watch<GameProvider>();
+                            final r = g.room;
+                            String turnLabel = 'Waiting...';
+                            bool myTurn = g.isMyTurn;
+                            if (r != null && r.players.isNotEmpty) {
+                              final idx = r.currentPlayerIndex;
+                              final name = r.players[idx].nickname;
+                              turnLabel = "$name's turn" + (myTurn ? ' (You)' : '');
+                            }
+                            return Container(
+                              width: double.infinity,
+                              color: myTurn ? Colors.green.shade100 : Colors.red.shade100,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              alignment: Alignment.center,
+                              child: Text(
+                                turnLabel,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: myTurn ? Colors.green.shade900 : Colors.red.shade900,
+                                ),
+                              ),
+                            );
+                          }),
+                          const PlayerRack(),
+                          const GameControls(),
+                          const MoveHistory(),
+                        ],
+                      );
+
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                children: const [
+                                  Scoreboard(),
+                                  Expanded(child: ScrabbleBoard()),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: controls,
+                            ),
+                          ],
                         );
-                      }),
-                      const PlayerRack(),
-                      const GameControls(),
-                    ],
+                      }
+
+                      return Column(
+                        children: [
+                          const Scoreboard(),
+                          const Expanded(child: ScrabbleBoard()),
+                          Builder(builder: (context) {
+                            final g = context.watch<GameProvider>();
+                            final r = g.room;
+                            String turnLabel = 'Waiting...';
+                            bool myTurn = g.isMyTurn;
+                            if (r != null && r.players.isNotEmpty) {
+                              final idx = r.currentPlayerIndex;
+                              final name = r.players[idx].nickname;
+                              turnLabel = "$name's turn" + (myTurn ? ' (You)' : '');
+                            }
+                            return Container(
+                              width: double.infinity,
+                              color: myTurn ? Colors.green.shade100 : Colors.red.shade100,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              alignment: Alignment.center,
+                              child: Text(
+                                turnLabel,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: myTurn ? Colors.green.shade900 : Colors.red.shade900,
+                                ),
+                              ),
+                            );
+                          }),
+                          const PlayerRack(),
+                          const GameControls(),
+                          const MoveHistory(),
+                        ],
+                      );
+                    },
                   ),
                 );
               },

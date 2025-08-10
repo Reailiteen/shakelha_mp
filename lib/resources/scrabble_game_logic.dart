@@ -20,8 +20,17 @@ class ScrabbleGameLogic {
   }) {
     final board = room.board;
   
-    // 1. Check if it's the player's turn
-    if (room.currentPlayerId != playerId) {
+    // 1. Check if it's the player's turn (support index-based turns too)
+    bool isPlayersTurn = false;
+    if (room.currentPlayerId != null) {
+      isPlayersTurn = (room.currentPlayerId == playerId);
+    } else {
+      final idx = room.currentPlayerIndex;
+      if (idx >= 0 && idx < room.players.length) {
+        isPlayersTurn = room.players[idx].id == playerId;
+      }
+    }
+    if (!isPlayersTurn) {
       return MoveValidationResult(
         isValid: false,
         message: 'It\'s not your turn!',
@@ -53,6 +62,14 @@ class ScrabbleGameLogic {
         message: 'Tiles must be placed in a straight line!',
       );
     }
+
+    // 4b. Enforce contiguity across the span (no gaps between min..max when considering existing board tiles)
+    if (!_isContiguousWithBoard(board, placedTiles)) {
+      return MoveValidationResult(
+        isValid: false,
+        message: 'Tiles must be contiguous without gaps!',
+      );
+    }
     
     // 5. Check if the move connects with existing tiles (except first move)
     if (!room.isFirstMove && !_isMoveConnectedToExistingTiles(board, placedTiles)) {
@@ -73,7 +90,7 @@ class ScrabbleGameLogic {
       }
     }
     
-    // 7. Check if all words formed are valid
+    // 7. Build main and cross words and validate
     final words = _findWordsFormed(board, placedTiles);
     final invalidWords = _getInvalidWords(words);
     
@@ -84,7 +101,7 @@ class ScrabbleGameLogic {
       );
     }
     
-    // 8. Calculate points
+    // 8. Calculate points (simple sum for now)
     final points = _calculatePoints(board, placedTiles, words);
     
     return MoveValidationResult(
@@ -283,12 +300,139 @@ class ScrabbleGameLogic {
   }
   
   static List<String> _findWordsFormed(Board board, List<PlacedTile> placedTiles) {
-    // TODO: Implement word finding logic
-    // For now, return a single word formed by placed tiles
-    final word = String.fromCharCodes(
-      placedTiles.map((pt) => pt.tile.letter.codeUnitAt(0))
-    );
-    return [word];
+    // Determine direction
+    final horizontal = placedTiles.length == 1
+        ? _hasNeighbor(board, placedTiles.first.position, horizontal: true)
+        : placedTiles.every((t) => t.position.row == placedTiles.first.position.row);
+
+    // Helper to get letter at a position considering placed tiles overlay
+    String? letterAt(Position p) {
+      final inPlaced = placedTiles.firstWhere(
+        (pt) => pt.position == p,
+        orElse: () => PlacedTile(tile: Tile(letter: ''), position: p),
+      );
+      if (inPlaced.tile.letter.isNotEmpty) return inPlaced.tile.letter;
+      final existing = board.getTileAt(p);
+      return existing?.letter;
+    }
+
+    final words = <String>[];
+
+    // Build main word by scanning to both sides
+    final base = placedTiles.first.position;
+    int r = base.row;
+    int c = base.col;
+    if (horizontal) {
+      // Move left to start
+      int cc = c;
+      while (cc - 1 >= 0 && letterAt(Position(row: r, col: cc - 1)) != null) {
+        cc--;
+      }
+      final buffer = StringBuffer();
+      while (cc < 15) {
+        final l = letterAt(Position(row: r, col: cc));
+        if (l == null) break;
+        buffer.write(l);
+        cc++;
+      }
+      final w = buffer.toString();
+      if (w.length > 1) words.add(w);
+    } else {
+      // Vertical main word
+      int rr = r;
+      while (rr - 1 >= 0 && letterAt(Position(row: rr - 1, col: c)) != null) {
+        rr--;
+      }
+      final buffer = StringBuffer();
+      while (rr < 15) {
+        final l = letterAt(Position(row: rr, col: c));
+        if (l == null) break;
+        buffer.write(l);
+        rr++;
+      }
+      final w = buffer.toString();
+      if (w.length > 1) words.add(w);
+    }
+
+    // Build cross words for each placed tile
+    for (final pt in placedTiles) {
+      final pr = pt.position.row;
+      final pc = pt.position.col;
+      if (horizontal) {
+        // Build vertical cross word at (pr, pc)
+        int rr = pr;
+        while (rr - 1 >= 0 && letterAt(Position(row: rr - 1, col: pc)) != null) rr--;
+        final buffer = StringBuffer();
+        while (rr < 15) {
+          final l = letterAt(Position(row: rr, col: pc));
+          if (l == null) break;
+          buffer.write(l);
+          rr++;
+        }
+        final w = buffer.toString();
+        if (w.length > 1) words.add(w);
+      } else {
+        // Build horizontal cross word at (pr, pc)
+        int cc = pc;
+        while (cc - 1 >= 0 && letterAt(Position(row: pr, col: cc - 1)) != null) cc--;
+        final buffer = StringBuffer();
+        while (cc < 15) {
+          final l = letterAt(Position(row: pr, col: cc));
+          if (l == null) break;
+          buffer.write(l);
+          cc++;
+        }
+        final w = buffer.toString();
+        if (w.length > 1) words.add(w);
+      }
+    }
+
+    // If no words > 1 found and only one tile placed, treat single letter as invalid word later
+    if (words.isEmpty && placedTiles.length == 1) {
+      words.add(placedTiles.first.tile.letter);
+    }
+    return words;
+  }
+
+  static bool _isContiguousWithBoard(Board board, List<PlacedTile> placedTiles) {
+    if (placedTiles.isEmpty) return false;
+    if (placedTiles.length == 1) return true; // single tile is trivially contiguous
+    final sameRow = placedTiles.every((t) => t.position.row == placedTiles.first.position.row);
+    final sameCol = placedTiles.every((t) => t.position.col == placedTiles.first.position.col);
+    final positions = placedTiles.map((pt) => pt.position).toList();
+    if (sameRow) {
+      final r = positions.first.row;
+      final cols = positions.map((p) => p.col).toList()..sort();
+      for (int col = cols.first; col <= cols.last; col++) {
+        final pos = Position(row: r, col: col);
+        final hasPlaced = positions.any((p) => p == pos);
+        final hasBoard = board.getTileAt(pos) != null;
+        if (!hasPlaced && !hasBoard) return false; // gap
+      }
+      return true;
+    }
+    if (sameCol) {
+      final c = positions.first.col;
+      final rows = positions.map((p) => p.row).toList()..sort();
+      for (int row = rows.first; row <= rows.last; row++) {
+        final pos = Position(row: row, col: c);
+        final hasPlaced = positions.any((p) => p == pos);
+        final hasBoard = board.getTileAt(pos) != null;
+        if (!hasPlaced && !hasBoard) return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  static bool _hasNeighbor(Board board, Position pos, {required bool horizontal}) {
+    if (horizontal) {
+      return (pos.col - 1 >= 0 && board.getTileAt(Position(row: pos.row, col: pos.col - 1)) != null) ||
+          (pos.col + 1 < boardSize && board.getTileAt(Position(row: pos.row, col: pos.col + 1)) != null);
+    } else {
+      return (pos.row - 1 >= 0 && board.getTileAt(Position(row: pos.row - 1, col: pos.col)) != null) ||
+          (pos.row + 1 < boardSize && board.getTileAt(Position(row: pos.row + 1, col: pos.col)) != null);
+    }
   }
 }
 

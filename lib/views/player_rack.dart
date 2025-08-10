@@ -41,7 +41,12 @@ class PlayerRack extends StatelessWidget {
               ),
               onDragStarted: () => game.startPlacingTiles(),
               child: GestureDetector(
-                onTap: () => game.selectRackTile(index),
+                onTap: () {
+                  if (!game.isPlacingTiles) {
+                    game.startPlacingTiles();
+                  }
+                  game.selectRackTile(index);
+                },
                 child: _RackTileVisual(tile: tile, selected: isSelected),
               ),
             );

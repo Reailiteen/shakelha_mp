@@ -11,6 +11,8 @@ class RoomDataProvider extends ChangeNotifier {
   String? _winnerId;
   Map<String, int> _scores = {};
   List<PlacedTile> _placedTiles = [];
+  // socketId -> hover preview
+  final Map<String, HoverPreview> _remoteHovers = {};
   
   // Getters
   Room? get room => _room;
@@ -19,6 +21,7 @@ class RoomDataProvider extends ChangeNotifier {
   String? get winnerId => _winnerId;
   Map<String, int> get scores => _scores;
   List<PlacedTile> get placedTiles => _placedTiles;
+  Map<String, HoverPreview> get remoteHovers => _remoteHovers;
   
   /// Updates the entire room state
   void updateRoom(Room room) {
@@ -67,6 +70,25 @@ class RoomDataProvider extends ChangeNotifier {
     _placedTiles.clear();
     notifyListeners();
   }
+
+  // --- Remote hover syncing ---
+  void updateRemoteHover({required String socketId, required String letter, required int row, required int col}) {
+    _remoteHovers[socketId] = HoverPreview(letter: letter, row: row, col: col);
+    notifyListeners();
+  }
+
+  void clearRemoteHover(String socketId) {
+    if (_remoteHovers.remove(socketId) != null) {
+      notifyListeners();
+    }
+  }
+
+  HoverPreview? getHoverAtPosition(Position position) {
+    for (final hp in _remoteHovers.values) {
+      if (hp.row == position.row && hp.col == position.col) return hp;
+    }
+    return null;
+  }
   
   /// Sets the game over state
   void setGameOver(String? winnerId, Map<String, int> scores) {
@@ -84,6 +106,7 @@ class RoomDataProvider extends ChangeNotifier {
     _winnerId = null;
     _scores = {};
     _placedTiles = [];
+    _remoteHovers.clear();
     notifyListeners();
   }
   
@@ -99,4 +122,11 @@ class RoomDataProvider extends ChangeNotifier {
       return null;
     }
   }
+}
+
+class HoverPreview {
+  final String letter;
+  final int row;
+  final int col;
+  const HoverPreview({required this.letter, required this.row, required this.col});
 }

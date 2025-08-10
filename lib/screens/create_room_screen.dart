@@ -16,6 +16,7 @@ class CreateRoomScreen extends StatefulWidget {
 class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final TextEditingController _nameController = TextEditingController();
   final SocketMethods _socketMethods = SocketMethods();
+  bool _creating = false;
 
   @override
   void initState() {
@@ -35,37 +36,77 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
     return Scaffold(
       body: Responsive(
-        child: Container(
-          margin: const EdgeInsets.symmetric(
-            horizontal: 20,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const CustomText(
-                shadows: [
-                  Shadow(
-                    blurRadius: 40,
-                    color: Colors.blue,
+        child: Stack(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(
+                horizontal: 20,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const CustomText(
+                    shadows: [
+                      Shadow(
+                        blurRadius: 40,
+                        color: Colors.blue,
+                      ),
+                    ],
+                    text: 'Create Room',
+                    fontSize: 70,
+                  ),
+                  SizedBox(height: size.height * 0.08),
+                  AbsorbPointer(
+                    absorbing: _creating,
+                    child: Opacity(
+                      opacity: _creating ? 0.6 : 1,
+                      child: Column(
+                        children: [
+                          CustomTextField(
+                            controller: _nameController,
+                            hintText: 'Enter your nickname',
+                          ),
+                          SizedBox(height: size.height * 0.045),
+                          CustomButton(
+                            onTap: () {
+                              setState(() => _creating = true);
+                              _socketMethods.createRoom(_nameController.text);
+                            },
+                            text: 'Create',
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
-                text: 'Create Room',
-                fontSize: 70,
               ),
-              SizedBox(height: size.height * 0.08),
-              CustomTextField(
-                controller: _nameController,
-                hintText: 'Enter your nickname',
-              ),
-              SizedBox(height: size.height * 0.045),
-              CustomButton(
-                  onTap: () => _socketMethods.createRoom(
-                        _nameController.text,
+            ),
+            if (_creating)
+              Container(
+                color: Colors.black.withOpacity(0.2),
+                child: const Center(
+                  child: SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: Card(
+                      elevation: 6,
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 12),
+                            Text('Creating room...'),
+                          ],
+                        ),
                       ),
-                  text: 'Create'),
-            ],
-          ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
