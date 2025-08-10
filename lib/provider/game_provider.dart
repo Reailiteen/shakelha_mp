@@ -70,24 +70,14 @@ class GameProvider extends ChangeNotifier {
   /// Updates turn status based on current player
   void _updateTurnStatus() {
     if (_room != null && _currentPlayerId != null) {
-      final mySocketId = _sockets.socketClient.id;
       final idx = _room!.currentPlayerIndex;
-      bool turnByIndex = false;
+      String? currentTurnPlayerId;
       if (idx >= 0 && idx < _room!.players.length) {
-        final currentP = _room!.players[idx];
-        turnByIndex = (currentP.id == _currentPlayerId) ||
-            (mySocketId != null && currentP.socketId == mySocketId);
+        currentTurnPlayerId = _room!.players[idx].id;
       }
-      final turnById = _room!.currentPlayerId != null
-          ? (_room!.currentPlayerId == _currentPlayerId)
-          : false;
-      _isMyTurn = turnByIndex || turnById;
-      // Debug
-      // ignore: avoid_print
-      debugPrint('[turn] myId='+(_currentPlayerId??'?')+', mySocket='+ (mySocketId??'?') +
-          ', currentIdx='+idx.toString()+', idxId='+ (idx>=0&&idx<_room!.players.length? _room!.players[idx].id : '?') +
-          ', idxSocket='+ (idx>=0&&idx<_room!.players.length? _room!.players[idx].socketId : '?') +
-          ', room.currentPlayerId='+ (_room!.currentPlayerId?.toString()??'null') +
+      _isMyTurn = currentTurnPlayerId == _currentPlayerId;
+      debugPrint('[turn] myId='+(_currentPlayerId??'?')+
+          ', currentIdx='+idx.toString()+', idxId='+ (currentTurnPlayerId??'?')+
           ', isMyTurn='+ _isMyTurn.toString());
     }
   }

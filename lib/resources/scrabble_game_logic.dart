@@ -336,7 +336,9 @@ class ScrabbleGameLogic {
         cc++;
       }
       final w = buffer.toString();
-      if (w.length > 1) words.add(w);
+      // Arabic horizontal words are right-to-left
+      final rtl = _reverseIfArabic(w);
+      if (rtl.length > 1) words.add(rtl);
     } else {
       // Vertical main word
       int rr = r;
@@ -383,7 +385,8 @@ class ScrabbleGameLogic {
           cc++;
         }
         final w = buffer.toString();
-        if (w.length > 1) words.add(w);
+        final rtl = _reverseIfArabic(w);
+        if (rtl.length > 1) words.add(rtl);
       }
     }
 
@@ -392,6 +395,17 @@ class ScrabbleGameLogic {
       words.add(placedTiles.first.tile.letter);
     }
     return words;
+  }
+
+  /// For Arabic, horizontal words should be right-to-left. Reverse the string.
+  /// For other scripts, you could extend this to detect and handle differently.
+  static String _reverseIfArabic(String s) {
+    if (s.isEmpty) return s;
+    // Heuristic: if any Arabic letters present, reverse. Keep simple for now.
+    final hasArabic = s.runes.any((cp) => (cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F));
+    if (!hasArabic) return s;
+    final runes = s.runes.toList().reversed;
+    return String.fromCharCodes(runes);
   }
 
   static bool _isContiguousWithBoard(Board board, List<PlacedTile> placedTiles) {

@@ -10,6 +10,7 @@ import 'package:mp_tictactoe/views/game_controls.dart';
 import 'package:mp_tictactoe/views/move_history.dart';
 import 'package:provider/provider.dart';
 import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
+import 'package:mp_tictactoe/models/room.dart';
 
 class GameScreen extends StatefulWidget {
   static String routeName = '/game';
@@ -34,6 +35,7 @@ class _GameScreenState extends State<GameScreen> {
     _socketMethods.turnPassedListener(context);
     _socketMethods.tilesExchangedListener(context);
     _socketMethods.errorOccurredListener(context);
+    _socketMethods.turnChangedListener(context);
     // _socketMethods.updatePlayersStateListener(context);
     // _socketMethods.pointIncreaseListener(context);
     // _socketMethods.endGameListener(context);
@@ -73,6 +75,20 @@ class _GameScreenState extends State<GameScreen> {
                         );
                   game.setCurrentPlayerId((me ?? room.players.first).id);
                 });
+
+                // Keep GameProvider synced with RoomDataProvider on every socket update
+                // This prevents turn desync between clients
+                // The selector triggers when RoomDataProvider.room changes
+                final sync = Selector<RoomDataProvider, Room?>(
+                  selector: (_, prov) => prov.room,
+                  builder: (ctx, latestRoom, __) {
+                    if (latestRoom != null) {
+                      // Update GameProvider's room state; it recomputes isMyTurn
+                      ctx.read<GameProvider>().updateRoom(latestRoom);
+                    }
+                    return const SizedBox.shrink();
+                  },
+                );
                 return SafeArea(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -119,9 +135,10 @@ class _GameScreenState extends State<GameScreen> {
                             Expanded(
                               flex: 3,
                               child: Column(
-                                children: const [
-                                  Scoreboard(),
-                                  Expanded(child: ScrabbleBoard()),
+                                children: [
+                                  sync,
+                                  const Scoreboard(),
+                                  const Expanded(child: ScrabbleBoard()),
                                 ],
                               ),
                             ),
@@ -135,6 +152,7 @@ class _GameScreenState extends State<GameScreen> {
 
                       return Column(
                         children: [
+                          sync,
                           const Scoreboard(),
                           const Expanded(child: ScrabbleBoard()),
                           Builder(builder: (context) {
