@@ -72,7 +72,7 @@ class ScrabbleBoard extends StatelessWidget {
                         child: Text(
                           (tile?.letter ?? pendingTile?.letter) ?? '',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.amber.shade800,
                             shadows: const [
@@ -90,7 +90,7 @@ class ScrabbleBoard extends StatelessWidget {
                             child: Text(
                               remoteHover.letter,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.blueGrey,
                               ),

@@ -99,6 +99,8 @@ class GameProvider extends ChangeNotifier {
     // Clear hover on cancel
     if (_room != null) {
       _sockets.clearHover(_room!.id);
+      // Also clear any live placed tiles preview
+      _sockets.placeTiles(_room!.id, const []);
     }
     notifyListeners();
   }
@@ -140,7 +142,13 @@ class GameProvider extends ChangeNotifier {
     ));
     
     _clearMessages();
-    // Keep placements local; batch will be sent on submitMove
+    // Broadcast pending placements so others can see live placements
+    if (_room != null) {
+      _sockets.placeTiles(
+        _room!.id,
+        _pendingPlacements.map((pt) => pt.toJson()).toList(),
+      );
+    }
     notifyListeners();
   }
   
@@ -149,6 +157,12 @@ class GameProvider extends ChangeNotifier {
     final index = _pendingPlacements.indexWhere((p) => p.position == position);
     if (index != -1) {
       _pendingPlacements.removeAt(index);
+      if (_room != null) {
+        _sockets.placeTiles(
+          _room!.id,
+          _pendingPlacements.map((pt) => pt.toJson()).toList(),
+        );
+      }
       notifyListeners();
     }
   }
@@ -265,7 +279,10 @@ class GameProvider extends ChangeNotifier {
           // Persist updated rack and bag into room
           final pIdx = _room!.players.indexWhere((p) => p.id == me.id);
           if (pIdx != -1) {
-            final updatedMe = me.copyWith(rack: newRack);
+            final updatedMe = me.copyWith(
+              rack: newRack,
+              score: me.score + (validation.points),
+            );
             final updatedPlayers = List<Player>.from(_room!.players);
             updatedPlayers[pIdx] = updatedMe;
             _room = _room!.copyWith(players: updatedPlayers, letterDistribution: ld);

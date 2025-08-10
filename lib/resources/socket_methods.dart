@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:mp_tictactoe/models/room.dart';
 import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/models/board.dart';
@@ -232,10 +233,15 @@ class SocketMethods {
           );
           final useIncomingRack = pIn.rack.isNotEmpty;
           final rack = useIncomingRack ? pIn.rack : existing.rack;
-          return pIn.copyWith(rack: rack);
+          return pIn.copyWith(
+            rack: rack,
+            score: math.max(pIn.score, existing.score),
+          );
         }).toList();
+        final incomingHasTiles = incoming.board.getOccupiedPositions().isNotEmpty;
+        final boardToUse = incomingHasTiles ? incoming.board : current.board;
         incoming = incoming.copyWith(
-          board: incoming.board, // accept server board updates
+          board: boardToUse, // don't wipe board if server sent empty grid
           letterDistribution: current.letterDistribution,
           players: mergedPlayers,
         );
@@ -304,8 +310,10 @@ class SocketMethods {
           final rack = useIncomingRack ? pIn.rack : existing.rack;
           return pIn.copyWith(rack: rack);
         }).toList();
+        final incomingHasTiles = incoming.board.getOccupiedPositions().isNotEmpty;
+        final boardToUse = incomingHasTiles ? incoming.board : current.board;
         incoming = incoming.copyWith(
-          board: incoming.board,
+          board: boardToUse,
           letterDistribution: current.letterDistribution,
           players: mergedPlayers,
         );
@@ -326,12 +334,17 @@ class SocketMethods {
             (p) => p.id == pIn.id,
             orElse: () => pIn,
           );
-        	final useIncomingRack = pIn.rack.isNotEmpty;
+          final useIncomingRack = pIn.rack.isNotEmpty;
           final rack = useIncomingRack ? pIn.rack : existing.rack;
-          return pIn.copyWith(rack: rack);
+          return pIn.copyWith(
+            rack: rack,
+            score: math.max(pIn.score, existing.score),
+          );
         }).toList();
+        final incomingHasTiles = incoming.board.getOccupiedPositions().isNotEmpty;
+        final boardToUse = incomingHasTiles ? incoming.board : current.board;
         incoming = incoming.copyWith(
-          board: incoming.board,
+          board: boardToUse,
           letterDistribution: current.letterDistribution,
           players: mergedPlayers,
         );
@@ -356,8 +369,10 @@ class SocketMethods {
           final rack = useIncomingRack ? pIn.rack : existing.rack;
           return pIn.copyWith(rack: rack);
         }).toList();
+        final incomingHasTiles = incoming.board.getOccupiedPositions().isNotEmpty;
+        final boardToUse = incomingHasTiles ? incoming.board : current.board;
         incoming = incoming.copyWith(
-          board: incoming.board,
+          board: boardToUse,
           letterDistribution: current.letterDistribution,
           players: mergedPlayers,
         );
@@ -380,7 +395,10 @@ class SocketMethods {
           );
           // For exchanges, incoming should have racks; fallback if missing
           final rack = pIn.rack.isNotEmpty ? pIn.rack : existing.rack;
-          return pIn.copyWith(rack: rack);
+          return pIn.copyWith(
+            rack: rack,
+            score: math.max(pIn.score, existing.score),
+          );
         }).toList();
         incoming = incoming.copyWith(
           board: incoming.board,

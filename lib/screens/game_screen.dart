@@ -122,9 +122,9 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                             );
                           }),
+                          const MoveHistory(),
                           const PlayerRack(),
                           const GameControls(),
-                          const MoveHistory(),
                         ],
                       );
 
@@ -138,6 +138,7 @@ class _GameScreenState extends State<GameScreen> {
                                 children: [
                                   sync,
                                   const Scoreboard(),
+                                  const MoveHistory(),
                                   const Expanded(child: ScrabbleBoard()),
                                 ],
                               ),
@@ -154,35 +155,45 @@ class _GameScreenState extends State<GameScreen> {
                         children: [
                           sync,
                           const Scoreboard(),
-                          const Expanded(child: ScrabbleBoard()),
-                          Builder(builder: (context) {
-                            final g = context.watch<GameProvider>();
-                            final r = g.room;
-                            String turnLabel = 'Waiting...';
-                            bool myTurn = g.isMyTurn;
-                            if (r != null && r.players.isNotEmpty) {
-                              final idx = r.currentPlayerIndex;
-                              final name = r.players[idx].nickname;
-                              turnLabel = "$name's turn" + (myTurn ? ' (You)' : '');
-                            }
-                            return Container(
-                              width: double.infinity,
-                              color: myTurn ? Colors.green.shade100 : Colors.red.shade100,
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              alignment: Alignment.center,
-                              child: Text(
-                                turnLabel,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: myTurn ? Colors.green.shade900 : Colors.red.shade900,
-                                ),
-                              ),
-                            );
-                          }),
-                          const PlayerRack(),
-                          const GameControls(),
                           const MoveHistory(),
+                          // Board takes ~3/5 of height
+                          const Expanded(flex: 3, child: ScrabbleBoard()),
+                          // Lower panel takes ~2/5 of height
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                Builder(builder: (context) {
+                                  final g = context.watch<GameProvider>();
+                                  final r = g.room;
+                                  String turnLabel = 'Waiting...';
+                                  bool myTurn = g.isMyTurn;
+                                  if (r != null && r.players.isNotEmpty) {
+                                    final idx = r.currentPlayerIndex;
+                                    final name = r.players[idx].nickname;
+                                    turnLabel = "$name's turn" + (myTurn ? ' (You)' : '');
+                                  }
+                                  return Container(
+                                    width: double.infinity,
+                                    color: myTurn ? Colors.green.shade100 : Colors.red.shade100,
+                                    padding: const EdgeInsets.symmetric(vertical: 6),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      turnLabel,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: myTurn ? Colors.green.shade900 : Colors.red.shade900,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                                const PlayerRack(),
+                                const GameControls(),
+                              ],
+                            ),
+                          ),
                         ],
                       );
                     },
