@@ -161,20 +161,27 @@ class _GameScreenState extends State<GameScreen> {
 
                       return Column(
                         children: [
+                          const Center(
+                            child: Row(
+                              children: [
+                                Scoreboard(),
+                                MoveHistory()
+                              ]
+                            )
+                          ),
                           // Board takes ~60% height
-                          const Expanded(flex: 3, child: Padding(
+                          const Expanded(flex: 7, child: Padding(
                             padding: EdgeInsets.all(8.0),
                             child: ScrabbleBoard(),
                           )),
                           // Lower panel takes ~40% height
                           Expanded(
-                            flex: 2,
+                            flex: 3,
                             child: Column(
                               mainAxisSize: MainAxisSize.max,
                               children: [
                                 sync,
-                                const Scoreboard(),
-                                const MoveHistory(),
+                                
                                 Builder(builder: (context) {
                                   final g = context.watch<GameProvider>();
                                   final r = g.room;

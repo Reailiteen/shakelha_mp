@@ -42,54 +42,89 @@ class MoveHistory extends StatelessWidget {
       }
     }
 
-    return Card(
-      margin: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Move History',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (entries.isEmpty)
-              const Text('No moves yet', style: TextStyle(color: Colors.black54))
-            else
-              SizedBox(
-                height: 140,
-                child: ListView.separated(
-                  itemCount: entries.length,
-                  separatorBuilder: (_, __) => const Divider(height: 8),
-                  itemBuilder: (context, index) {
-                    final e = entries[index];
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            e.playerName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.history),
+        label: const Text('Move History'),
+        onPressed: entries.isEmpty
+            ? null
+            : () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.white,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  builder: (ctx) {
+                    return DraggableScrollableSheet(
+                      expand: false,
+                      initialChildSize: 0.6,
+                      minChildSize: 0.4,
+                      maxChildSize: 0.9,
+                      builder: (context, controller) {
+                        return SafeArea(
+                          top: false,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.history),
+                                    const SizedBox(width: 8),
+                                    const Text('Move History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Divider(height: 1),
+                              Expanded(
+                                child: ListView.separated(
+                                  controller: controller,
+                                  padding: const EdgeInsets.all(12),
+                                  itemCount: entries.length,
+                                  separatorBuilder: (_, __) => const Divider(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final e = entries[index];
+                                    return Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            e.playerName,
+                                            style: const TextStyle(fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                        if (e.words.isNotEmpty)
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              e.words,
+                                              textAlign: TextAlign.right,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        const SizedBox(width: 8),
+                                        Text('+${e.points}')
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        if (e.words.isNotEmpty)
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              e.words,
-                              textAlign: TextAlign.right,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        const SizedBox(width: 8),
-                        Text('+${e.points}')
-                      ],
+                        );
+                      },
                     );
                   },
-                ),
-              ),
-          ],
-        ),
+                );
+              },
       ),
     );
   }

@@ -22,19 +22,14 @@ class Scoreboard extends StatelessWidget {
             .map(
               (p) => Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Column(
-                  children: [
+                child: 
                     Text(
-                      p.nickname,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      p.nickname + ' : ' + p.score.toString(),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      p.score.toString(),
-                      style: const TextStyle(fontSize: 18, color: Colors.black87),
-                    ),
-                  ],
-                ),
+      
+                
+                
               ),
             )
             .toList(),
