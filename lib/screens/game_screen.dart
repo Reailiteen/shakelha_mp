@@ -122,48 +122,59 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                             );
                           }),
-                          const MoveHistory(),
                           const PlayerRack(),
                           const GameControls(),
                         ],
                       );
 
                       if (isWide) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  sync,
-                                  const Scoreboard(),
-                                  const MoveHistory(),
-                                  const Expanded(child: ScrabbleBoard()),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: controls,
-                            ),
-                          ],
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final boardW = constraints.maxWidth * 0.6;
+                            final sideW = constraints.maxWidth - boardW;
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  width: boardW,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(8.0),
+                                    child: ScrabbleBoard(),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: sideW,
+                                  child: Column(
+                                    children: [
+                                      sync,
+                                      const Scoreboard(),
+                                      const MoveHistory(),
+                                      Expanded(child: controls),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       }
 
                       return Column(
                         children: [
-                          sync,
-                          const Scoreboard(),
-                          const MoveHistory(),
-                          // Board takes ~3/5 of height
-                          const Expanded(flex: 3, child: ScrabbleBoard()),
-                          // Lower panel takes ~2/5 of height
+                          // Board takes ~60% height
+                          const Expanded(flex: 3, child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: ScrabbleBoard(),
+                          )),
+                          // Lower panel takes ~40% height
                           Expanded(
                             flex: 2,
                             child: Column(
                               mainAxisSize: MainAxisSize.max,
                               children: [
+                                sync,
+                                const Scoreboard(),
+                                const MoveHistory(),
                                 Builder(builder: (context) {
                                   final g = context.watch<GameProvider>();
                                   final r = g.room;
