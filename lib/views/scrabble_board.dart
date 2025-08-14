@@ -22,15 +22,40 @@ class ScrabbleBoard extends StatelessWidget {
         final letterFont = cellSize * 0.66;
         final hoverFont = cellSize * 0.66;
 
-        return AspectRatio(
-          aspectRatio: 1,
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: boardSize,
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFFFD54F), // ornate gold
+              width: 3,
             ),
-            itemCount: boardSize * boardSize,
-            itemBuilder: (context, index) {
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: const [
+                Color(0xFFF7F7F7), // pearl white
+                Color(0xFFE7D8C5), // desert sand-like
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                offset: const Offset(0, 4),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: boardSize,
+                ),
+                itemCount: boardSize * boardSize,
+                itemBuilder: (context, index) {
               final row = index ~/ boardSize;
               final col = index % boardSize;
               final pos = Position(row: row, col: col);
@@ -72,7 +97,7 @@ class ScrabbleBoard extends StatelessWidget {
                         children: [
                           Container(
                             decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey.shade400),
+                              border: Border.all(color: Colors.black.withOpacity(0.1), width: 0.5),
                               color: isHover ? Colors.yellow.shade100 : _cellColor(row, col, isPending),
                             ),
                             alignment: Alignment.center,
@@ -81,7 +106,7 @@ class ScrabbleBoard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: letterFont,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.amber.shade800,
+                                color: Colors.brown.shade700,
                                 shadows: const [
                                   Shadow(offset: Offset(0.5, 0.5), blurRadius: 0.5, color: Colors.black26),
                                 ],
@@ -99,7 +124,7 @@ class ScrabbleBoard extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: hoverFont,
                                     fontWeight: FontWeight.w800,
-                                    color: Colors.blueGrey,
+                                    color: Colors.blueGrey.shade600,
                                   ),
                                   textDirection: TextDirection.rtl,
                                 ),
@@ -117,16 +142,17 @@ class ScrabbleBoard extends StatelessWidget {
               );
             },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
-
+  );
+}
   Color _cellColor(int row, int col, bool isPending) {
     if (isPending) return Colors.yellow.shade200;
     // Center star cell
-    if (row == 7 && col == 7) return Colors.orange.shade100;
-    // Standard board alternating color
-    return (row + col) % 2 == 0 ? Colors.blueGrey.shade50 : Colors.white;
+    if (row == 7 && col == 7) return const Color(0xFFFFF3E0);
+    // Standard board alternating color, subtle
+    return (row + col) % 2 == 0 ? const Color(0xFFF3F6FA) : Colors.white;
   }
 }

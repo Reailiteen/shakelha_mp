@@ -16,56 +16,78 @@ class PlayerRack extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.brown.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.brown.shade300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          ...currentPlayer.rack.asMap().entries.map((entry) {
-            final index = entry.key;
-            final tile = entry.value;
-            final isSelected = game.selectedRackIndex == index;
-            
-            return Draggable<Tile>(
-              data: tile,
-              feedback: _RackTileVisual(tile: tile, highlighted: true),
-              childWhenDragging: Opacity(
-                opacity: 0.3,
-                child: _RackTileVisual(tile: tile, selected: isSelected),
-              ),
-              onDragStarted: () => game.startPlacingTiles(),
-              child: GestureDetector(
-                onTap: () {
-                  if (!game.isPlacingTiles) {
-                    game.startPlacingTiles();
-                  }
-                  game.selectRackTile(index);
-                },
-                child: _RackTileVisual(tile: tile, selected: isSelected),
-              ),
-            );
-          }).toList(),
-          // Fill empty slots
-          ...List.generate(
-            7 - currentPlayer.rack.length,
-            (index) => Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth;
+        // Compute size to fit 7 tiles + spacing without scroll
+        final spacing = 6.0;
+        final tileSize = ((maxW - spacing * 12) / 7).clamp(28.0, 48.0);
+        final rackHeight = tileSize + 12; // padding
+        return Container(
+          constraints: BoxConstraints(minHeight: rackHeight),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.brown.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.brown.shade300, width: 0.8),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+                ...currentPlayer.rack.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final tile = entry.value;
+                  final isSelected = game.selectedRackIndex == index;
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: spacing / 2),
+                    child: SizedBox(
+                      width: tileSize,
+                      height: tileSize,
+                      child: Draggable<Tile>(
+                        data: tile,
+                        feedback: SizedBox(
+                          width: tileSize,
+                          height: tileSize,
+                          child: _RackTileVisual(tile: tile, highlighted: true, size: tileSize),
+                        ),
+                        childWhenDragging: Opacity(
+                          opacity: 0.3,
+                          child: _RackTileVisual(tile: tile, selected: isSelected, size: tileSize),
+                        ),
+                        onDragStarted: () => game.startPlacingTiles(),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (!game.isPlacingTiles) {
+                              game.startPlacingTiles();
+                            }
+                            game.selectRackTile(index);
+                          },
+                          child: _RackTileVisual(tile: tile, selected: isSelected, size: tileSize),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+                // Fill empty slots visually (non-interactive)
+                ...List.generate(
+                  7 - currentPlayer.rack.length,
+                  (index) => Padding(
+                    padding: EdgeInsets.symmetric(horizontal: spacing / 2),
+                    child: Container(
+                      width: tileSize,
+                      height: tileSize,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        border: Border.all(color: Colors.grey.shade400, width: 0.8),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -74,13 +96,15 @@ class _RackTileVisual extends StatelessWidget {
   final Tile tile;
   final bool selected;
   final bool highlighted;
-  const _RackTileVisual({Key? key, required this.tile, this.selected = false, this.highlighted = false}) : super(key: key);
+  final double? size;
+  const _RackTileVisual({Key? key, required this.tile, this.selected = false, this.highlighted = false, this.size}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final s = size ?? 50;
     return Container(
-                width: 50,
-                height: 50,
+                width: s,
+                height: s,
                 decoration: BoxDecoration(
                   color: highlighted
                       ? Colors.yellow.shade300
@@ -98,7 +122,7 @@ class _RackTileVisual extends StatelessWidget {
                     Text(
                       tile.letter,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: (s * 0.4).clamp(14.0, 24.0),
                         fontWeight: FontWeight.w800,
                         color: Colors.amber.shade800,
                         shadows: const [

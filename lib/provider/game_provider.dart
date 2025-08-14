@@ -99,8 +99,6 @@ class GameProvider extends ChangeNotifier {
     // Clear hover on cancel
     if (_room != null) {
       _sockets.clearHover(_room!.id);
-      // Also clear any live placed tiles preview
-      _sockets.placeTiles(_room!.id, const []);
     }
     notifyListeners();
   }
@@ -142,13 +140,6 @@ class GameProvider extends ChangeNotifier {
     ));
     
     _clearMessages();
-    // Broadcast pending placements so others can see live placements
-    if (_room != null) {
-      _sockets.placeTiles(
-        _room!.id,
-        _pendingPlacements.map((pt) => pt.toJson()).toList(),
-      );
-    }
     notifyListeners();
   }
   
@@ -157,12 +148,6 @@ class GameProvider extends ChangeNotifier {
     final index = _pendingPlacements.indexWhere((p) => p.position == position);
     if (index != -1) {
       _pendingPlacements.removeAt(index);
-      if (_room != null) {
-        _sockets.placeTiles(
-          _room!.id,
-          _pendingPlacements.map((pt) => pt.toJson()).toList(),
-        );
-      }
       notifyListeners();
     }
   }
@@ -254,46 +239,23 @@ class GameProvider extends ChangeNotifier {
       _lastSubmittedWords = List<String>.from(validation.wordsFormed);
       debugPrint('[submitMove] words=' + _lastSubmittedWords.join(' | '));
 
-      // Optimistically remove used tiles from my rack locally, then refill from local bag
-      final me = myPlayer;
-      if (me != null) {
-        final newRack = List<Tile>.from(me.rack);
-        for (final pt in _pendingPlacements) {
-          final idx = newRack.indexWhere((t) =>
-              t.ownerId == me.id &&
-              t.letter == pt.tile.letter &&
-              t.isOnBoard == false);
-          if (idx != -1) {
-            newRack.removeAt(idx);
-          }
-        }
-        // Draw to 7 from the bag
-        if (_room != null) {
-          final ld = _room!.letterDistribution;
-          final need = 7 - newRack.length;
-          if (need > 0) {
-            final drawn = ld.drawTiles(need);
-            final owned = drawn.map((t) => t.copyWith(ownerId: me.id)).toList();
-            newRack.addAll(owned);
-          }
-          // Persist updated rack and bag into room
-          final pIdx = _room!.players.indexWhere((p) => p.id == me.id);
-          if (pIdx != -1) {
-            final updatedMe = me.copyWith(
-              rack: newRack,
-              score: me.score + (validation.points),
-            );
-            final updatedPlayers = List<Player>.from(_room!.players);
-            updatedPlayers[pIdx] = updatedMe;
-            _room = _room!.copyWith(players: updatedPlayers, letterDistribution: ld);
-          }
-        }
+      // Locally commit tiles to the board so they stay visible until the server syncs
+      var newBoard = _room!.board;
+      for (final pt in _pendingPlacements) {
+        final committedTile = pt.tile.copyWith(isOnBoard: true, isNewlyPlaced: false);
+        newBoard = newBoard.placeTile(committedTile, pt.position);
       }
+      _room = _room!.copyWith(board: newBoard);
+      _updateTurnStatus();
 
       // Locally finalize UI state; server will sync room via listeners
       _isPlacingTiles = false;
       _pendingPlacements.clear();
       selectedRackIndex = null;
+      // Clear hover/preview after submit
+      if (_room != null) {
+        _sockets.clearHover(_room!.id);
+      }
       final wordsText = _lastSubmittedWords.isNotEmpty ? ' [' + _lastSubmittedWords.join(', ') + ']' : '';
       _setSuccessMessage('Move submitted: +${validation.points}$wordsText');
       notifyListeners();

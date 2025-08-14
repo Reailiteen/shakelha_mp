@@ -20,10 +20,14 @@ class SocketMethods {
 
   // EMITS
   /// Creates a new game room
-  void createRoom(String nickname) {
+  /// Optional params: isPublic, name, occupancy
+  void createRoom(String nickname, {bool isPublic = false, String name = 'Room', int occupancy = 2}) {
     if (nickname.isNotEmpty) {
       _socketClient.emit('createRoom', {
         'nickname': nickname,
+        'isPublic': isPublic,
+        'name': name,
+        'occupancy': occupancy,
       });
     }
   }
@@ -97,6 +101,35 @@ class SocketMethods {
     });
   }
 
+  /// Request list of public rooms (lobby)
+  void listRooms({String status = 'open', int page = 1, int pageSize = 20}) {
+    _socketClient.emit('listRooms', {
+      'status': status,
+      'page': page,
+      'pageSize': pageSize,
+    });
+  }
+
+  /// Marks the current player as ready/unready in the lobby.
+  /// Server should:
+  /// - track ready state per player
+  /// - when all players are ready, transition room status to 'playing'
+  /// - broadcast 'updateRoom' with the updated room
+  void readyUp({required String roomId, bool ready = true}) {
+    _socketClient.emit('readyUp', {
+      'roomId': roomId,
+      'ready': ready,
+    });
+  }
+
+  /// Host-only: toggle room visibility in lobby list
+  void setRoomVisibility({required String roomId, required bool isPublic}) {
+    _socketClient.emit('setRoomVisibility', {
+      'roomId': roomId,
+      'isPublic': isPublic,
+    });
+  }
+
   // LISTENERS
   // Normalizes server (Mongo) room payload into our Room model JSON
   Map<String, dynamic> _normalizeRoom(dynamic roomData) {
@@ -128,21 +161,57 @@ class SocketMethods {
     final currentIdx = map['turnIndex'] is int ? map['turnIndex'] as int : 0;
     final createdBy = players.isNotEmpty ? players.first['id'] as String : '';
 
+    // Map server board (2D array) -> client Board
+    Board normalizedBoard;
+    final size = (map['size'] is int) ? map['size'] as int : 15;
+    if (map['board'] is List) {
+      final srvBoard = map['board'] as List;
+      final grid = List.generate(size, (_) => List<Tile?>.filled(size, null));
+      for (int r = 0; r < srvBoard.length && r < size; r++) {
+        final row = srvBoard[r];
+        if (row is! List) continue;
+        for (int c = 0; c < row.length && c < size; c++) {
+          final cell = row[c];
+          if (cell == null) continue;
+          if (cell is Map) {
+            final letter = (cell['letter'] ?? '') as String;
+            if (letter.isEmpty) continue;
+            final points = (cell['points'] ?? cell['value'] ?? 1) as int;
+            final isNew = (cell['isNewlyPlaced'] ?? cell['isNew'] ?? false) as bool;
+            grid[r][c] = Tile(
+              letter: letter,
+              value: points,
+              isOnBoard: true,
+              isNewlyPlaced: isNew,
+            );
+          } else if (cell is String && cell.isNotEmpty) {
+            grid[r][c] = Tile(letter: cell, value: 1, isOnBoard: true);
+          }
+        }
+      }
+      normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
+    } else {
+      normalizedBoard = Board.empty(size: size);
+    }
+
     return {
       'id': (map['_id'] ?? map['id'] ?? '').toString(),
       'name': (map['name'] ?? 'Room').toString(),
-      'maxPlayers': map['maxRounds'] is int ? 2 : (map['maxPlayers'] ?? 2),
+      'maxPlayers': map['occupancy'] is int ? map['occupancy'] as int : (map['maxPlayers'] ?? 2),
       'players': players,
-      'board': Board.empty().toJson(),
+      'board': normalizedBoard.toJson(),
       'letterDistribution': LetterDistribution().toJson(),
       'currentPlayerIndex': currentIdx,
       'moveHistory': <dynamic>[],
-      'hasGameStarted': players.length > 1,
+      'hasGameStarted': players.length > 1 || (map['status'] == 'playing') || normalizedBoard.getOccupiedPositions().isNotEmpty,
       'hasGameEnded': false,
       'createdAt': DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
       'settings': const RoomSettings().toJson(),
       'createdBy': createdBy,
+      'isPublic': (map['isPublic'] ?? false) as bool,
+      'status': (map['status'] ?? 'open').toString(),
+      'hostSocketId': (map['hostSocketId'] ?? '') as String,
     };
   }
   void createRoomSuccessListener(BuildContext context) {
@@ -215,6 +284,42 @@ class SocketMethods {
     _socketClient.on('errorOccurred', (data) {
       debugPrint('[socket errorOccurred] payload: ' + data.toString());
       showSnackBar(context, data);
+    });
+  }
+
+  /// Listen for lobby room list response
+  void roomsListListener(BuildContext context, void Function(List<Map<String, dynamic>> rooms) onRooms) {
+    _socketClient.on('roomsList', (data) {
+      try {
+        final list = (data as List).cast<dynamic>();
+        final rooms = list.map<Map<String, dynamic>>((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          return {
+            'id': (m['id'] ?? m['_id']).toString(),
+            'name': (m['name'] ?? 'Room').toString(),
+            'seats': (m['seats'] ?? '${(m['players'] as List? ?? const []).length}/${m['occupancy'] ?? 2}').toString(),
+            'status': (m['status'] ?? 'open').toString(),
+            'updatedAt': m['updatedAt'],
+          };
+        }).toList();
+        onRooms(rooms);
+      } catch (_) {
+        showSnackBar(context, 'Failed to parse rooms');
+      }
+    });
+  }
+
+  /// Listen for lobby updates; clients should call listRooms on this signal
+  void roomsUpdatedListener(void Function() onUpdated) {
+    _socketClient.on('roomsUpdated', (_) => onUpdated());
+  }
+
+  /// Optional: listen for lobby ready updates (backend should emit 'lobbyReadyUpdate')
+  /// Payload example: { roomId, players: [{id, nickname, ready}], allReady: bool }
+  void lobbyReadyUpdateListener(BuildContext context) {
+    _socketClient.on('lobbyReadyUpdate', (data) {
+      // We rely on updateRoom to reflect authoritative state.
+      // This is an optional UX hint; for now we no-op.
     });
   }
 

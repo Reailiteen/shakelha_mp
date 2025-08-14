@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mp_tictactoe/provider/room_data_provider.dart';
+import 'package:mp_tictactoe/resources/socket_methods.dart';
 import 'package:provider/provider.dart';
 
 class WaitingLobby extends StatefulWidget {
@@ -12,6 +13,7 @@ class WaitingLobby extends StatefulWidget {
 
 class _WaitingLobbyState extends State<WaitingLobby> {
   late TextEditingController roomIdController;
+  final SocketMethods _socket = SocketMethods();
 
   @override
   void initState() {
@@ -32,6 +34,8 @@ class _WaitingLobbyState extends State<WaitingLobby> {
   Widget build(BuildContext context) {
     final room = Provider.of<RoomDataProvider>(context).room;
     final players = room?.players ?? const [];
+    final mySocketId = _socket.socketClient.id;
+    final isHost = room != null && room.hostSocketId != null && room.hostSocketId == mySocketId;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -60,7 +64,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
                         Icon(Icons.hourglass_top, color: Colors.amber.shade400),
                         const SizedBox(width: 8),
                         const Text(
-                          'Waiting for a player to join',
+                          'بإنتظار اللاعبين...',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -79,7 +83,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Room ID', style: TextStyle(color: Colors.white70)),
+                                const Text('معرّف الغرفة', style: TextStyle(color: Colors.white70)),
                                 const SizedBox(height: 6),
                                 SelectableText(
                                   roomIdController.text.isEmpty ? '—' : roomIdController.text,
@@ -89,7 +93,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Copy',
+                            tooltip: 'نسخ',
                             icon: const Icon(Icons.copy_rounded),
                             onPressed: roomIdController.text.isEmpty
                                 ? null
@@ -97,7 +101,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
                                     await Clipboard.setData(ClipboardData(text: roomIdController.text));
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Room ID copied')),
+                                      const SnackBar(content: Text('تم نسخ معرّف الغرفة')),
                                     );
                                   },
                           ),
@@ -106,7 +110,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
                     ),
                     const SizedBox(height: 16),
                     if (players.isNotEmpty) ...[
-                      const Text('Players', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Text('اللاعبون', style: TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       ...players.map((p) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -122,17 +126,29 @@ class _WaitingLobbyState extends State<WaitingLobby> {
                     ],
                     const SizedBox(height: 8),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('إظهار الغرفة للعامة'),
+                            const SizedBox(width: 8),
+                            Switch(
+                              value: room?.isPublic ?? false,
+                              onChanged: isHost
+                                  ? (v) => _socket.setRoomVisibility(roomId: room.id, isPublic: v)
+                                  : null,
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 8),
-                        Text('Share the Room ID with a friend to start!'),
+                        ElevatedButton.icon(
+                          onPressed: room == null ? null : () => _socket.readyUp(roomId: room.id),
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('جاهز'),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    const Text('سيتم توزيع البلاطات بعد ضغط جميع اللاعبين على "جاهز"'),
                   ],
                 ),
               ),

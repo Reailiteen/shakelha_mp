@@ -56,6 +56,15 @@ class Room {
   /// The ID of the player who created the room
   final String createdBy;
 
+  /// Whether the room is listed publicly in the lobby
+  final bool isPublic;
+
+  /// Status of the room lifecycle: open, playing, full, ended
+  final String status;
+
+  /// Socket ID of the host/creator (authorizes room settings)
+  final String? hostSocketId;
+
   /// Gets the current player
   Player? get currentPlayer => 
       currentPlayerId == null ? null : getPlayer(currentPlayerId!);
@@ -89,6 +98,9 @@ class Room {
     DateTime? updatedAt,
     RoomSettings? settings,
     required this.createdBy,
+    this.isPublic = false,
+    this.status = 'open',
+    this.hostSocketId,
   })  : id = id ?? const Uuid().v4(),
         settings = settings ?? const RoomSettings(),
         createdAt = createdAt ?? DateTime.now(),
@@ -112,6 +124,9 @@ class Room {
     required this.updatedAt,
     required this.settings,
     required this.createdBy,
+    required this.isPublic,
+    required this.status,
+    this.hostSocketId,
   });
   /// Creates a new room with the given name and creator
   factory Room.create({
@@ -162,6 +177,9 @@ class Room {
           ? RoomSettings.fromJson(json['settings'])
           : const RoomSettings(),
       createdBy: json['createdBy'],
+      isPublic: json['isPublic'] ?? false,
+      status: json['status'] ?? 'open',
+      hostSocketId: json['hostSocketId'],
     );
   }
 
@@ -182,6 +200,9 @@ class Room {
       'updatedAt': updatedAt.toIso8601String(),
       'settings': settings.toJson(),
       'createdBy': createdBy,
+      'isPublic': isPublic,
+      'status': status,
+      'hostSocketId': hostSocketId,
     };
   }
   
@@ -362,6 +383,9 @@ class Room {
     DateTime? updatedAt,
     RoomSettings? settings,
     String? createdBy,
+    bool? isPublic,
+    String? status,
+    String? hostSocketId,
   }) {
     return Room(
       id: id ?? this.id,
@@ -378,6 +402,9 @@ class Room {
       updatedAt: updatedAt ?? this.updatedAt,
       settings: settings ?? this.settings,
       createdBy: createdBy ?? this.createdBy,
+      isPublic: isPublic ?? this.isPublic,
+      status: status ?? this.status,
+      hostSocketId: hostSocketId ?? this.hostSocketId,
     );
   }
   

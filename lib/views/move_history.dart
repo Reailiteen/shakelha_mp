@@ -45,18 +45,20 @@ class MoveHistory extends StatelessWidget {
     return Align(
       alignment: Alignment.centerLeft,
       child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF26A69A),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
         icon: const Icon(Icons.history),
-        label: const Text('Move History'),
+        label: const Text('سجل الحركات'),
         onPressed: entries.isEmpty
             ? null
             : () {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
-                  backgroundColor: Colors.white,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
+                  backgroundColor: Colors.transparent,
                   builder: (ctx) {
                     return DraggableScrollableSheet(
                       expand: false,
@@ -64,60 +66,88 @@ class MoveHistory extends StatelessWidget {
                       minChildSize: 0.4,
                       maxChildSize: 0.9,
                       builder: (context, controller) {
-                        return SafeArea(
-                          top: false,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.history),
-                                    const SizedBox(width: 8),
-                                    const Text('Move History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    const Spacer(),
-                                    IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed: () => Navigator.of(context).pop(),
-                                    ),
-                                  ],
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0E2235).withOpacity(0.98),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                            border: Border.all(color: const Color(0xFFFFD54F).withOpacity(0.6), width: 1),
+                          ),
+                          child: SafeArea(
+                            top: false,
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.history, color: Colors.white),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'سجل الحركات',
+                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                      const Spacer(),
+                                      IconButton(
+                                        icon: const Icon(Icons.close, color: Colors.white70),
+                                        onPressed: () => Navigator.of(context).pop(),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const Divider(height: 1),
-                              Expanded(
-                                child: ListView.separated(
-                                  controller: controller,
-                                  padding: const EdgeInsets.all(12),
-                                  itemCount: entries.length,
-                                  separatorBuilder: (_, __) => const Divider(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final e = entries[index];
-                                    return Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            e.playerName,
-                                            style: const TextStyle(fontWeight: FontWeight.w600),
-                                          ),
+                                Divider(color: Colors.white.withOpacity(0.1), height: 1),
+                                Expanded(
+                                  child: ListView.separated(
+                                    controller: controller,
+                                    padding: const EdgeInsets.all(12),
+                                    itemCount: entries.length,
+                                    separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.06), height: 12),
+                                    itemBuilder: (context, index) {
+                                      final e = entries[index];
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.03),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.white.withOpacity(0.06)),
                                         ),
-                                        if (e.words.isNotEmpty)
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              e.words,
-                                              textAlign: TextAlign.right,
-                                              overflow: TextOverflow.ellipsis,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                e.playerName,
+                                                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                                              ),
                                             ),
-                                          ),
-                                        const SizedBox(width: 8),
-                                        Text('+${e.points}')
-                                      ],
-                                    );
-                                  },
+                                            if (e.words.isNotEmpty)
+                                              Expanded(
+                                                flex: 2,
+                                                child: Text(
+                                                  e.words,
+                                                  textAlign: TextAlign.right,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(color: Colors.white70),
+                                                ),
+                                              ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFFD54F),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '+${e.points}',
+                                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },
