@@ -73,6 +73,10 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
         title: const Text('تمرير واللعب (محلي)'),
         centerTitle: true,
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Icon(Icons.arrow_back),
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -285,7 +289,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                         
                         // Player UI - 18% of screen height (reduced from 20%)
                         SizedBox(
-                          height: constraints.maxHeight * 0.23,
+                          height: constraints.maxHeight * 0.21,
                           child: Builder(builder: (context) {
                             final room = passPlayProvider.room!;
                             final currentPlayerId = passPlayProvider.currentPlayerId ?? room.players.first.id;
@@ -309,9 +313,9 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                             );
                           }),
                         ),
+                        SizedBox(height: constraints.maxHeight * 0.005),
                         
                         // Bottom padding for safe area
-                        SizedBox(height: constraints.maxHeight * 0.005),
                       ],
                     );
                   },

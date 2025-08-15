@@ -399,6 +399,47 @@ class PlayerUi extends StatelessWidget {
       padding: const EdgeInsets.all(4.0),
       child: Column(
         children: [
+          // Tiles rack
+          Expanded(
+            flex:10,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(2.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFA46D41),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: tiles.asMap().entries.map((entry) {
+                  final int index = entry.key;
+                  final tile = entry.value;
+                  final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
+                  
+                  return Container(
+                    width: tileSize,
+                    height: tileSize,
+                    child: TileUI(
+                      width: tileSize,
+                      height: tileSize,
+                      letter: tile.letter,
+                      points: tile.value,
+                      left: 0,
+                      top: 0,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           // Player info and controls row
           Expanded(
             flex: 9,
@@ -525,49 +566,9 @@ class PlayerUi extends StatelessWidget {
             ),
           ),
           
-          const SizedBox(height: 8),
           
-          // Tiles rack
-          Expanded(
-            flex:11,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(2.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFA46D41),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: tiles.asMap().entries.map((entry) {
-                  final int index = entry.key;
-                  final tile = entry.value;
-                  final double tileSize = (screenWidth - 80) / 7; // 7 tiles with padding
-                  
-                  return Container(
-                    width: tileSize,
-                    height: tileSize,
-                    child: TileUI(
-                      width: tileSize,
-                      height: tileSize,
-                      letter: tile.letter,
-                      points: tile.value,
-                      left: 0,
-                      top: 0,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        ],
+          
+          ],
       ),
     );
   }

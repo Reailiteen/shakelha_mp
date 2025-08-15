@@ -249,7 +249,7 @@ class Topbar extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
       child: Container(
         width: screenWidth * 0.95,
         height: double.infinity,
@@ -333,10 +333,13 @@ class Topbar extends StatelessWidget {
               height: double.infinity,
               padding: const EdgeInsets.all(8.0),
               child: Center(
-                child: Icon(
-                  Icons.arrow_forward_ios,
-                  color: const Color(0xFFFAE3C5),
-                  size: screenWidth * 0.05,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.arrow_forward,
+                    color: const Color(0xFFFAE3C5),
+                    size: screenWidth * 0.08,
+                  ),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ),

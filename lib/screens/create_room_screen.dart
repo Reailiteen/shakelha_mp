@@ -55,6 +55,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Icon(Icons.arrow_back),
+      ),
       appBar: AppBar(title: const Text('إنشاء غرفة')),
       body: Responsive(
         child: Stack(
