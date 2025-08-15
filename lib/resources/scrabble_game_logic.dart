@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:mp_tictactoe/models/board.dart';
-import 'package:mp_tictactoe/models/letter_distribution.dart';
+import 'package:mp_tictactoe/models/letterDistribution.dart';
 import 'package:mp_tictactoe/models/move.dart';
 import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/models/position.dart';
@@ -138,7 +138,7 @@ class ScrabbleGameLogic {
     // Update the board with placed tiles
     var updatedBoard = room.board;
     for (final placedTile in placedTiles) {
-      updatedBoard = updatedBoard.placeTile(placedTile.tile, placedTile.position);
+      updatedBoard.placeTile(placedTile.tile, placedTile.position);
     }
     
     // Update player's rack

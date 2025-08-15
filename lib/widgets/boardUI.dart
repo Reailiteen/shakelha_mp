@@ -53,7 +53,8 @@ class GridCell extends StatelessWidget {
   }
 }
 
-class Board extends StatelessWidget {
+class BoardUI extends StatelessWidget {
+  const BoardUI({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;

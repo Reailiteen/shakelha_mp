@@ -1,5 +1,7 @@
 
 
+import 'package:mp_tictactoe/models/position.dart';
+
 /// Represents a single tile/letter in the game.
 /// Can be on the board, in a player's rack, or in the letter bag.
 class Tile {
@@ -7,23 +9,26 @@ class Tile {
   final String letter;
   
   /// The point value of the tile
-  final int value;
+  int value;
   
   /// Whether the tile is currently placed on the board
-  final bool isOnBoard;
+  bool isOnBoard;
   
   /// Whether the tile was just placed in the current turn
-  final bool isNewlyPlaced;
+  bool isNewlyPlaced;
   
   /// The player ID who owns/placed this tile (null if in bag)
   final String? ownerId;
 
-  const Tile({
+  Position? position;
+
+  Tile({
     required this.letter,
     this.value = 1,
     this.isOnBoard = false,
     this.isNewlyPlaced = false,
     this.ownerId,
+    this.position,
   });
 
   /// Creates a Tile from a JSON map
@@ -34,6 +39,7 @@ class Tile {
       isOnBoard: json['isOnBoard'] ?? false,
       isNewlyPlaced: json['isNewlyPlaced'] ?? false,
       ownerId: json['ownerId'],
+      position: json['position'] != null ? Position.fromJson(json['position']) : null,
     );
   }
 
@@ -45,6 +51,7 @@ class Tile {
       'isOnBoard': isOnBoard,
       'isNewlyPlaced': isNewlyPlaced,
       'ownerId': ownerId,
+      'position': position?.toJson(),
     };
   }
 
@@ -55,6 +62,7 @@ class Tile {
     bool? isOnBoard,
     bool? isNewlyPlaced,
     String? ownerId,
+    Position? position,
   }) {
     return Tile(
       letter: letter ?? this.letter,
@@ -62,7 +70,8 @@ class Tile {
       isOnBoard: isOnBoard ?? this.isOnBoard,
       isNewlyPlaced: isNewlyPlaced ?? this.isNewlyPlaced,
       ownerId: ownerId ?? this.ownerId,
-    );
+      position: position ?? this.position,
+      );
   }
   
   @override
@@ -77,8 +86,9 @@ class Tile {
           value == other.value &&
           isOnBoard == other.isOnBoard &&
           isNewlyPlaced == other.isNewlyPlaced &&
-          ownerId == other.ownerId;
+          ownerId == other.ownerId &&
+          position == other.position;
           
   @override
-  int get hashCode => Object.hash(letter, value, isOnBoard, isNewlyPlaced, ownerId);
+  int get hashCode => Object.hash(letter, value, isOnBoard, isNewlyPlaced, ownerId, position);
 }

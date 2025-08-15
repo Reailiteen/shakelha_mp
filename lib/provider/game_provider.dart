@@ -243,7 +243,7 @@ class GameProvider extends ChangeNotifier {
       var newBoard = _room!.board;
       for (final pt in _pendingPlacements) {
         final committedTile = pt.tile.copyWith(isOnBoard: true, isNewlyPlaced: false);
-        newBoard = newBoard.placeTile(committedTile, pt.position);
+        newBoard.placeTile(committedTile, pt.position);
       }
       _room = _room!.copyWith(board: newBoard);
       _updateTurnStatus();

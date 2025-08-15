@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:mp_tictactoe/widgets/topbar.dart';
 import 'package:mp_tictactoe/widgets/enemyUI.dart';
 import 'package:mp_tictactoe/widgets/gameBG.dart';
-import 'package:mp_tictactoe/widgets/board.dart';
+import 'package:mp_tictactoe/widgets/boardUI.dart';
 import 'package:mp_tictactoe/models/tile.dart';
 
 class PassPlayScreen extends StatefulWidget {
@@ -283,7 +283,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                           flex: 4,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                            child: Board(),
+                            child: BoardUI(),
                           ),
                         ),
                         

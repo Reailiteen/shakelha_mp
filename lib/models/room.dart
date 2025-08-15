@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:uuid/uuid.dart';
 
 import 'board.dart';
-import 'letter_distribution.dart';
+import 'letterDistribution.dart';
 import 'player.dart';
 import 'move.dart';
 
@@ -137,7 +137,7 @@ class Room {
   }) {
     final now = DateTime.now();
     final board = Board.empty();
-    final letterDistribution = LetterDistribution();
+    final letterDistribution = LetterDistribution(tiles: []);
     
     return Room(
       id: const Uuid().v4(),
@@ -314,7 +314,7 @@ class Room {
     // Apply the move to the board
     Board newBoard = board;
     for (final placedTile in move.placedTiles) {
-      newBoard = newBoard.placeTile(placedTile.tile, placedTile.position);
+      newBoard.placeTile(placedTile.tile, placedTile.position);
     }
     
     // Update player's score and rack

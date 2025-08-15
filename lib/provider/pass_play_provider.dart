@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/models/room.dart';
 import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/models/board.dart';
-import 'package:mp_tictactoe/models/letter_distribution.dart';
+import 'package:mp_tictactoe/models/letterDistribution.dart';
 
 import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/models/position.dart';
@@ -66,7 +66,7 @@ class PassPlayProvider extends ChangeNotifier {
 
   /// Initialize a new local game with two players
   void initializeGame(String player1Name, String player2Name) {
-    final letterDist = LetterDistribution();
+    final letterDist = LetterDistribution(tiles: []);
     
     // Create players with initial racks
     final player1 = Player(
@@ -274,7 +274,7 @@ class PassPlayProvider extends ChangeNotifier {
     for (final pt in _pendingPlacements) {
       // Place on board
       final committedTile = pt.tile.copyWith(isOnBoard: true, isNewlyPlaced: false, ownerId: _currentPlayerId);
-      newBoard = newBoard.placeTile(committedTile, pt.position);
+      newBoard.placeTile(committedTile, pt.position);
       // Remove from rack: match by letter and not on board
       final i = rack.indexWhere((t) => t.letter == pt.tile.letter && !t.isOnBoard);
       if (i != -1) rack.removeAt(i);

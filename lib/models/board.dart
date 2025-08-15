@@ -1,5 +1,6 @@
 import 'tile.dart';
 import 'position.dart';
+import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 
 /// Represents the game board with a grid of tiles
 class Board {
@@ -12,8 +13,10 @@ class Board {
   /// The positions of special multiplier cells
   final Map<Position, CellMultiplier> cellMultipliers;
 
+  bool isFirstTurn=true;
+
   /// Creates a new board with the given size and grid
-  const Board({
+  Board({
     this.size = 15,
     required this.grid,
     Map<Position, CellMultiplier>? cellMultipliers,
@@ -112,101 +115,132 @@ class Board {
     return grid[position.row][position.col];
   }
   
-  /// Places a tile at the specified position
+  bool isValidFirstTurn(List<Tile> newlyPlacedTiles){
+    if (newlyPlacedTiles.isEmpty ) return false;
+
+  // Step 1: Ensure all tiles are in same row or column
+    final positions = newlyPlacedTiles.map((t) => t.position!).toList();
+    bool isRow = positions.first.row == positions.last.row;
+    bool isCol = positions.first.col == positions.last.col;
+    if (!isRow && !isCol) return false;
+
+    // Step 3: Collect main word
+    String mainWord;
+    int collectedPoints;
+    (mainWord, collectedPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+    if (!ArabicDictionary.instance.containsWord(mainWord)) return false;
+
+    isFirstTurn = false;
+
+    return true;
+  }
+  (bool, int) isValidSubmission(List<Tile> newlyPlacedTiles) {
+
+    if(isFirstTurn){
+      return (isValidFirstTurn(newlyPlacedTiles), 0);
+    }
+  if (newlyPlacedTiles.isEmpty ) return (false, 0);
+
+  // Step 1: Ensure all tiles are in same row or column
+  final positions = newlyPlacedTiles.map((t) => t.position!).toList();
+  bool isRow = positions.first.row == positions.last.row;
+  bool isCol = positions.first.col == positions.last.col;
+  if (!isRow && !isCol) return (false, 0);
+
+  // Step 2: Ensure at least one adjacent tile exists (connects to board)
+  bool isConnected = false;
+  for (final tile in newlyPlacedTiles) {
+    for (final neighborPos in getAdjacentPositions(tile.position!)) {
+      final neighbor = getTileAt(neighborPos);
+      if (neighbor != null && !newlyPlacedTiles.contains(neighbor)) {
+        isConnected = true;
+        break;
+      }
+    }
+  }
+  if (!isConnected) return (false, 0);
+  String mainWord;
+  int collectedPoints;
+  // Step 3: Collect main word
+  (mainWord, collectedPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+  if (!ArabicDictionary.instance.containsWord(mainWord)) return (false, 0);
+
+  // Step 4: Check perpendicular words from each new tile
+  for (final tile in newlyPlacedTiles) {
+    String perpendicularWord;
+    int newPoints;
+    (perpendicularWord, newPoints) = buildWordFrom(tile.position!, !isRow);
+    if (perpendicularWord.length > 1 &&
+        !ArabicDictionary.instance.containsWord(perpendicularWord)) {
+      return (false, 0);
+    }
+    collectedPoints += newPoints;
+  }
+
+  return (true, collectedPoints);
+}
+
+/// Builds a word starting from a given position in a direction.
+  (String, int) buildWordFrom(Position start, bool isRow) {
+    // Move backwards to find start of word
+    Position p = start;
+    int collectedPoints = 0;
+    while (true) {
+      Position prev = isRow ? Position(row: p.row, col: p.col - 1) : Position(row: p.row - 1, col: p.col);
+      if (getTileAt(prev) == null) break;
+      p = prev;
+    }
+
+    // Move forwards collecting letters
+    StringBuffer buffer = StringBuffer();
+    while (true) {
+      final tile = getTileAt(p);
+      if (tile == null) break;
+      if(cellMultipliers.containsKey(tile.position)){
+        collectedPoints += tile.value * cellMultipliers[tile.position]!.value;
+      }else{
+        collectedPoints += tile.value;
+      }
+      buffer.write(tile.letter);
+      p = isRow ? Position(row: p.row, col: p.col + 1) : Position(row: p.row + 1, col: p.col);
+    }
+
+    return (buffer.toString(), collectedPoints);
+  }
+
   /// Returns a new Board with the tile placed
-  Board placeTile(Tile tile, Position position) {
-    if (!_isValidPosition(position)) return this;
-    
-    final newGrid = List<List<Tile?>>.from(
-      grid.map((row) => List<Tile?>.from(row)),
-    );
-    
-    newGrid[position.row][position.col] = tile;
-    
-    return Board(
-      size: size,
-      grid: newGrid,
-      cellMultipliers: cellMultipliers,
-    );
+  void placeTile(Tile tile, Position position) {
+    if (!_isValidPosition(position)) return;
+    grid[position.row][position.col] = tile;
+    tile.position = position;
   }
   
   /// Removes a tile from the specified position
   /// Returns a new Board with the tile removed
-  Board removeTile(Position position) {
-    if (!_isValidPosition(position) || getTileAt(position) == null) {
-      return this;
+  void removeTile(Position position) {
+
+    Tile tile = getTileAt(position)!;
+    if (!_isValidPosition(position) || tile == null) {
+      return;
     }
-    
-    final newGrid = List<List<Tile?>>.from(
-      grid.map((row) => List<Tile?>.from(row)),
-    );
-    
-    newGrid[position.row][position.col] = null;
-    
-    return Board(
-      size: size,
-      grid: newGrid,
-      cellMultipliers: cellMultipliers,
-    );
+    tile.position = null;
+    grid[position.row][position.col] = null;
   }
   
   /// Gets all the tiles on the board with their positions
-  Map<Position, Tile> getAllTiles() {
-    final tiles = <Position, Tile>{};
+  List<Tile> getAllTiles() {
+    final tiles = <Tile>[];
     
     for (var row = 0; row < size; row++) {
       for (var col = 0; col < size; col++) {
         final tile = grid[row][col];
         if (tile != null) {
-          tiles[Position(row: row, col: col)] = tile;
+          tiles.add(tile);
         }
       }
     }
     
     return tiles;
-  }
-  
-  /// Gets all empty positions adjacent to existing tiles
-  Set<Position> getEmptyAdjacentPositions() {
-    final emptyAdjacent = <Position>{};
-    final directions = [
-      Position(row: -1, col: 0), // up
-      Position(row: 1, col: 0),  // down
-      Position(row: 0, col: -1), // left
-      Position(row: 0, col: 1),  // right
-    ];
-    
-    // First, find all positions with tiles
-    final tilePositions = <Position>[];
-    for (var row = 0; row < size; row++) {
-      for (var col = 0; col < size; col++) {
-        if (grid[row][col] != null) {
-          tilePositions.add(Position(row: row, col: col));
-        }
-      }
-    }
-    
-    // If no tiles, return center position for first move
-    if (tilePositions.isEmpty) {
-      final center = size ~/ 2;
-      return {Position(row: center, col: center)};
-    }
-    
-    // Find all empty adjacent positions
-    for (final pos in tilePositions) {
-      for (final dir in directions) {
-        final newPos = Position(
-          row: pos.row + dir.row,
-          col: pos.col + dir.col,
-        );
-        
-        if (_isValidPosition(newPos) && getTileAt(newPos) == null) {
-          emptyAdjacent.add(newPos);
-        }
-      }
-    }
-    
-    return emptyAdjacent;
   }
   
   /// Checks if a position is within the bounds of the board
@@ -237,22 +271,11 @@ class Board {
     }
   }
   
-  /// Gets all non-empty positions on the board
-  Iterable<Position> getOccupiedPositions() sync* {
-    for (var row = 0; row < size; row++) {
-      for (var col = 0; col < size; col++) {
-        if (grid[row][col] != null) {
-          yield Position(row: row, col: col);
-        }
-      }
-    }
-  }
-  
   /// Gets the center position of the board
   Position get centerPosition => Position(row: size ~/ 2, col: size ~/ 2);
   
   /// Checks if the board is empty (first move)
-  bool get isEmpty => !getOccupiedPositions().any((_) => true);
+  bool get isEmpty => getAllTiles().isEmpty;
   
   @override
   String toString() {
