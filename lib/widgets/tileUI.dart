@@ -247,7 +247,7 @@ class TileUI extends StatelessWidget {
             ),
           ),
           
-          // Letter
+          // Letter (center)
           Positioned.fill(
             child: Align(
               alignment: Alignment.center,
@@ -256,30 +256,29 @@ class TileUI extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: const Color(0xFF50271A),
-                  fontSize: width * 0.5, // Responsive font size
+                  fontSize: width * 0.56, // Slightly bigger
                   fontFamily: 'Jomhuria',
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w800, // thicker font
                   height: 1.0,
                 ),
               ),
             ),
           ),
-          
-          // Points (bottom right)
-          if (points > 0)
-            Positioned(
-              right: width * 0.1,
-              bottom: width * 0.05,
-              child: Text(
-                points.toString(),
-                style: TextStyle(
-                  color: const Color(0xFF50271A),
-                  fontSize: width * 0.2, // Responsive font size
-                  fontFamily: 'Jomhuria',
-                  fontWeight: FontWeight.w400,
-                ),
+
+          // Points (always visible, bottom right)
+          Positioned(
+            right: width * 0.1,
+            bottom: width * 0.05,
+            child: Text(
+              points.toString(),
+              style: TextStyle(
+                color: const Color(0xFF50271A),
+                fontSize: width * 0.22,
+                fontFamily: 'Jomhuria',
+                fontWeight: FontWeight.w700,
               ),
             ),
+          ),
         ],
       ),
     );

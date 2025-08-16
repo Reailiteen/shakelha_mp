@@ -90,7 +90,7 @@ class _GameScreenState extends State<GameScreen> {
                     Row(
                       children: [
                         const Text('Status: '),
-                        Chip(label: Text(room.status)),
+                        Chip(label: Text(room.status.toString())),
                       ],
                     ),
                     Row(

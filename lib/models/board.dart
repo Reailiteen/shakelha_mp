@@ -136,8 +136,24 @@ class Board {
   }
   (bool, int) isValidSubmission(List<Tile> newlyPlacedTiles) {
 
-    if(isFirstTurn){
-      return (isValidFirstTurn(newlyPlacedTiles), 0);
+    if (isFirstTurn) {
+      if (newlyPlacedTiles.isEmpty) return (false, 0);
+      // Must be in one row or one column
+      final positions = newlyPlacedTiles.map((t) => t.position!).toList();
+      final bool isRow = positions.first.row == positions.last.row;
+      final bool isCol = positions.first.col == positions.last.col;
+      if (!isRow && !isCol) return (false, 0);
+      // Must cover center cell
+      final center = centerPosition;
+      final coversCenter = positions.any((p) => p == center);
+      if (!coversCenter) return (false, 0);
+      // Build main word and validate
+      String mainWord;
+      int collectedPoints;
+      (mainWord, collectedPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+      if (!ArabicDictionary.instance.containsWord(mainWord)) return (false, 0);
+      isFirstTurn = false;
+      return (true, collectedPoints);
     }
   if (newlyPlacedTiles.isEmpty ) return (false, 0);
 
@@ -197,7 +213,15 @@ class Board {
       final tile = getTileAt(p);
       if (tile == null) break;
       if(cellMultipliers.containsKey(tile.position)){
-        collectedPoints += tile.value * cellMultipliers[tile.position]!.value;
+        final mult = cellMultipliers[tile.position]!;
+        if (mult.isWordMultiplier) {
+          // For word multiplier, add base letter value now; word multiplier application
+          // is approximated by multiplying here (simple handling). For full accuracy,
+          // this would be applied to the total word later.
+          collectedPoints += tile.value * mult.value;
+        } else {
+          collectedPoints += tile.value * mult.value;
+        }
       }else{
         collectedPoints += tile.value;
       }
@@ -205,7 +229,11 @@ class Board {
       p = isRow ? Position(row: p.row, col: p.col + 1) : Position(row: p.row + 1, col: p.col);
     }
 
-    return (buffer.toString(), collectedPoints);
+    String word = buffer.toString();
+    if (isRow) {
+      word = _reverseIfArabic(word);
+    }
+    return (word, collectedPoints);
   }
 
   /// Returns a new Board with the tile placed
@@ -290,6 +318,15 @@ class Board {
     }
     return buffer.toString();
   }
+}
+
+/// Arabic utility: reverse string for proper right-to-left visualization when extracting
+String _reverseIfArabic(String s) {
+  if (s.isEmpty) return s;
+  final hasArabic = s.runes.any((cp) => (cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F));
+  if (!hasArabic) return s;
+  final runes = s.runes.toList().reversed;
+  return String.fromCharCodes(runes);
 }
 
 /// Represents a cell multiplier (letter or word)

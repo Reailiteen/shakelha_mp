@@ -5,7 +5,16 @@ import 'board.dart';
 import 'letterDistribution.dart';
 import 'player.dart';
 import 'move.dart';
+import 'tile.dart';
+import 'position.dart';
+import 'package:mp_tictactoe/resources/scrabble_game_logic.dart';
 
+enum Status {
+  open,
+  playing,
+  full,
+  ended,
+}
 /// Represents a game room where players can join and play
 class Room {
   /// Unique identifier for the room
@@ -34,6 +43,9 @@ class Room {
   
   /// Whether this is the first move of the game
   final bool isFirstMove;
+
+  /// Count of consecutive pass moves across players
+  final int consecutivePassCount;
   
   /// The list of moves made in the current game
   final List<Move> moveHistory;
@@ -60,7 +72,7 @@ class Room {
   final bool isPublic;
 
   /// Status of the room lifecycle: open, playing, full, ended
-  final String status;
+  final Status status;
 
   /// Socket ID of the host/creator (authorizes room settings)
   final String? hostSocketId;
@@ -91,6 +103,7 @@ class Room {
     this.currentPlayerId,
     this.currentPlayerIndex = 0,
     this.isFirstMove = true,
+    this.consecutivePassCount = 0,
     this.moveHistory = const [],
     this.hasGameStarted = false,
     this.hasGameEnded = false,
@@ -99,7 +112,7 @@ class Room {
     RoomSettings? settings,
     required this.createdBy,
     this.isPublic = false,
-    this.status = 'open',
+    this.status =   Status.open,
     this.hostSocketId,
   })  : id = id ?? const Uuid().v4(),
         settings = settings ?? const RoomSettings(),
@@ -107,27 +120,7 @@ class Room {
         updatedAt = updatedAt ?? DateTime.now();
 
   // Private constructor for copyWith
-  Room._({
-    required this.id,
-    required this.name,
-    required this.maxPlayers,
-    required this.players,
-    required this.board,
-    required this.letterDistribution,
-    this.currentPlayerId,
-    required this.currentPlayerIndex,
-    required this.isFirstMove,
-    required this.moveHistory,
-    required this.hasGameStarted,
-    required this.hasGameEnded,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.settings,
-    required this.createdBy,
-    required this.isPublic,
-    required this.status,
-    this.hostSocketId,
-  });
+  // Private redirect constructor was unused; removed to satisfy lints
   /// Creates a new room with the given name and creator
   factory Room.create({
     required String name,
@@ -150,6 +143,7 @@ class Room {
       createdBy: creator.id,
       createdAt: now,
       updatedAt: now,
+      status: Status.open,
     );
   }
 
@@ -164,7 +158,10 @@ class Room {
           .toList(),
       board: Board.fromJson(json['board']),
       letterDistribution: LetterDistribution.fromJson(json['letterDistribution']),
+      currentPlayerId: json['currentPlayerId'],
       currentPlayerIndex: json['currentPlayerIndex'] ?? 0,
+      isFirstMove: json['isFirstMove'] ?? true,
+      consecutivePassCount: json['consecutivePassCount'] ?? 0,
       moveHistory: (json['moveHistory'] as List?)
               ?.map((e) => Move.fromJson(e))
               .toList() ??
@@ -178,7 +175,14 @@ class Room {
           : const RoomSettings(),
       createdBy: json['createdBy'],
       isPublic: json['isPublic'] ?? false,
-      status: json['status'] ?? 'open',
+      status: json['status'] == null
+          ? Status.open
+          : (json['status'] is String
+              ? Status.values.firstWhere(
+                  (s) => s.toString().split('.').last == json['status'],
+                  orElse: () => Status.open,
+                )
+              : Status.open),
       hostSocketId: json['hostSocketId'],
     );
   }
@@ -192,7 +196,10 @@ class Room {
       'players': players.map((e) => e.toJson()).toList(),
       'board': board.toJson(),
       'letterDistribution': letterDistribution.toJson(),
+      'currentPlayerId': currentPlayerId,
       'currentPlayerIndex': currentPlayerIndex,
+      'isFirstMove': isFirstMove,
+      'consecutivePassCount': consecutivePassCount,
       'moveHistory': moveHistory.map((e) => e.toJson()).toList(),
       'hasGameStarted': hasGameStarted,
       'hasGameEnded': hasGameEnded,
@@ -201,7 +208,7 @@ class Room {
       'settings': settings.toJson(),
       'createdBy': createdBy,
       'isPublic': isPublic,
-      'status': status,
+      'status': status.toString().split('.').last,
       'hostSocketId': hostSocketId,
     };
   }
@@ -375,7 +382,10 @@ class Room {
     List<Player>? players,
     Board? board,
     LetterDistribution? letterDistribution,
+    String? currentPlayerId,
     int? currentPlayerIndex,
+    bool? isFirstMove,
+    int? consecutivePassCount,
     List<Move>? moveHistory,
     bool? hasGameStarted,
     bool? hasGameEnded,
@@ -394,7 +404,10 @@ class Room {
       players: players ?? List.from(this.players),
       board: board ?? this.board,
       letterDistribution: letterDistribution ?? this.letterDistribution,
+      currentPlayerId: currentPlayerId ?? this.currentPlayerId,
       currentPlayerIndex: currentPlayerIndex ?? this.currentPlayerIndex,
+      isFirstMove: isFirstMove ?? this.isFirstMove,
+      consecutivePassCount: consecutivePassCount ?? this.consecutivePassCount,
       moveHistory: moveHistory ?? List.from(this.moveHistory),
       hasGameStarted: hasGameStarted ?? this.hasGameStarted,
       hasGameEnded: hasGameEnded ?? this.hasGameEnded,
@@ -403,13 +416,172 @@ class Room {
       settings: settings ?? this.settings,
       createdBy: createdBy ?? this.createdBy,
       isPublic: isPublic ?? this.isPublic,
-      status: status ?? this.status,
       hostSocketId: hostSocketId ?? this.hostSocketId,
     );
   }
   
   @override
   String toString() => 'Room($name, $playerCount/$maxPlayers players)';
+
+  // --- Game helpers to avoid duplicating logic in providers ---
+
+  /// Returns map of playerId -> score
+  Map<String, int> scores() {
+    final out = <String, int>{};
+    for (final p in players) {
+      out[p.id] = p.score;
+    }
+    return out;
+  }
+
+  /// Advances to next player and sets `currentPlayerId`
+  Room switchToNextPlayer() {
+    final nextIndex = (currentPlayerIndex + 1) % players.length;
+    final updatedPlayers = players
+        .map((p) => p.copyWith(isCurrentTurn: p.id == players[nextIndex].id))
+        .toList();
+    return copyWith(
+      currentPlayerIndex: nextIndex,
+      currentPlayerId: players[nextIndex].id,
+      players: updatedPlayers,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  /// Validates and applies a placement move. On success, updates board, rack, score, history, refills rack,
+  /// resets first move flag, clears pass streak, and advances turn.
+  /// Returns (updatedRoom, validationResult, committedMove).
+  (Room, MoveValidationResult, Move) trySubmitMove(String playerId, List<PlacedTile> placedTiles) {
+    final validation = ScrabbleGameLogic.validateMove(
+      room: this,
+      playerId: playerId,
+      placedTiles: placedTiles,
+    );
+    if (!validation.isValid) {
+      return (this, validation, Move(id: '', playerId: playerId, type: MoveType.place));
+    }
+
+    // Update board and player rack
+    var updatedBoard = board;
+    final playerIndex = players.indexWhere((p) => p.id == playerId);
+    final player = players[playerIndex];
+    final newRack = List<Tile>.from(player.rack);
+    for (final pt in placedTiles) {
+      updatedBoard.placeTile(pt.tile.copyWith(isOnBoard: true, isNewlyPlaced: false, ownerId: playerId, position: pt.position), pt.position);
+      final i = newRack.indexWhere((t) => identical(t, pt.tile) || (t.letter == pt.tile.letter && !t.isOnBoard));
+      if (i != -1) newRack.removeAt(i);
+    }
+
+    // Create move and update player score
+    final move = Move(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      playerId: playerId,
+      type: MoveType.place,
+      placedTiles: List<PlacedTile>.from(placedTiles),
+      wordsFormed: List<String>.from(validation.wordsFormed),
+      points: validation.points,
+    );
+
+    // Draw up to rack size
+    final toDraw = (7 - newRack.length).clamp(0, 7);
+    final added = toDraw > 0 ? letterDistribution.drawTiles(toDraw, ownerId: playerId) : const <Tile>[];
+    newRack.addAll(added);
+
+    // Apply updates
+    final updatedPlayer = player.copyWith(score: player.score + validation.points, rack: newRack);
+    final newPlayers = List<Player>.from(players);
+    newPlayers[playerIndex] = updatedPlayer;
+
+    final nextRoom = copyWith(
+      board: updatedBoard,
+      players: newPlayers,
+      moveHistory: [...moveHistory, move],
+      isFirstMove: false,
+      consecutivePassCount: 0,
+      updatedAt: DateTime.now(),
+    ).switchToNextPlayer();
+
+    return (nextRoom, validation, move);
+  }
+
+  /// Records a pass for the given player and advances turn, increasing the consecutive pass streak.
+  Room passTurnBy(String playerId, {int? passThreshold}) {
+    final move = Move(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      playerId: playerId,
+      type: MoveType.pass,
+      placedTiles: const [],
+      wordsFormed: const [],
+      points: 0,
+    );
+    final threshold = passThreshold ?? (players.length * 2);
+    final newCount = consecutivePassCount + 1;
+    var r = copyWith(
+      moveHistory: [...moveHistory, move],
+      consecutivePassCount: newCount,
+      updatedAt: DateTime.now(),
+    );
+    if (newCount >= threshold) {
+      r = r.copyWith(hasGameEnded: true);
+      return r;
+    }
+    return r.switchToNextPlayer();
+  }
+
+  /// Swaps tiles back to bag and draws replacements for player.
+  Room swapTilesFor(String playerId, List<Tile> tilesToSwap) {
+    if (tilesToSwap.isEmpty) return this;
+    final idx = players.indexWhere((p) => p.id == playerId);
+    if (idx == -1) return this;
+    final p = players[idx];
+    final newRack = List<Tile>.from(p.rack);
+    for (final t in tilesToSwap) {
+      final i = newRack.indexWhere((rt) => identical(rt, t) || (rt.letter == t.letter && !rt.isOnBoard));
+      if (i != -1) newRack.removeAt(i);
+    }
+    letterDistribution.returnTiles(tilesToSwap);
+    final replacements = letterDistribution.drawTiles(tilesToSwap.length, ownerId: playerId);
+    newRack.addAll(replacements);
+    final updatedPlayers = List<Player>.from(players);
+    updatedPlayers[idx] = updatedPlayers[idx].copyWith(rack: newRack, hasExchanged: true);
+    final move = Move(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      playerId: playerId,
+      type: MoveType.exchange,
+      placedTiles: const [],
+      wordsFormed: const [],
+      points: 0,
+    );
+    final r = copyWith(
+      players: updatedPlayers,
+      moveHistory: [...moveHistory, move],
+      consecutivePassCount: 0,
+      updatedAt: DateTime.now(),
+    );
+    return r.switchToNextPlayer();
+  }
+
+  /// Refill a player's rack to 7 tiles
+  Room refillRackFor(String playerId) {
+    final idx = players.indexWhere((p) => p.id == playerId);
+    if (idx == -1) return this;
+    final p = players[idx];
+    final toDraw = (7 - p.rack.length).clamp(0, 7);
+    if (toDraw <= 0) return this;
+    final drawn = letterDistribution.drawTiles(toDraw, ownerId: playerId);
+    final newRack = [...p.rack, ...drawn];
+    final updatedPlayers = List<Player>.from(players);
+    updatedPlayers[idx] = updatedPlayers[idx].copyWith(rack: newRack);
+    return copyWith(players: updatedPlayers, updatedAt: DateTime.now());
+  }
+
+  /// Move a pending placement (represented in UI state) logically on the board preview
+  /// Note: final commit still goes through trySubmitMove; this function does not mutate board.
+  /// Kept here for future centralization if we later move pending state into the model.
+  Room previewMovePending(Position from, Position to) {
+    // No-op placeholder to keep API symmetric; UI holds pending state.
+    return this;
+  }
 }
 
 /// Settings that can be customized for a room

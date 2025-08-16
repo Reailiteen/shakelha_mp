@@ -55,6 +55,46 @@ class LetterDistribution {
     
     return LetterDistribution(tiles: tiles..shuffle());
   }
+  /// Arabic distribution (aligned with our local engine’s mapping)
+  factory LetterDistribution.arabic() {
+    final tiles = <Tile>[];
+    void addTiles(String letter, int count, int value) {
+      for (var i = 0; i < count; i++) {
+        tiles.add(Tile(letter: letter, value: value));
+      }
+    }
+
+    addTiles('ا', 8, 1);
+    addTiles('ل', 8, 1);
+    addTiles('م', 6, 2);
+    addTiles('ن', 6, 2);
+    addTiles('ي', 6, 1);
+    addTiles('ه', 5, 1);
+    addTiles('و', 5, 1);
+    addTiles('ر', 5, 1);
+    addTiles('ت', 5, 1);
+    addTiles('س', 4, 2);
+    addTiles('ك', 4, 2);
+    addTiles('ب', 4, 3);
+    addTiles('د', 3, 2);
+    addTiles('ج', 2, 4);
+    addTiles('ش', 2, 4);
+    addTiles('ص', 2, 4);
+    addTiles('ق', 2, 5);
+    addTiles('ف', 2, 4);
+    addTiles('ح', 2, 4);
+    addTiles('ع', 2, 4);
+    addTiles('غ', 1, 5);
+    addTiles('ط', 1, 5);
+    addTiles('ظ', 1, 8);
+    addTiles('خ', 1, 5);
+    addTiles('ذ', 1, 8);
+    addTiles('ث', 1, 5);
+    addTiles('ز', 1, 8);
+    addTiles('ض', 1, 8);
+
+    return LetterDistribution(tiles: tiles..shuffle());
+  }
 
   /// Creates a LetterDistribution from a JSON map
   factory LetterDistribution.fromJson(Map<String, dynamic> json) {
@@ -87,6 +127,20 @@ class LetterDistribution {
     }
     
     return drawn;
+  }
+
+  /// Returns tiles back to the bag (e.g., after swap)
+  void returnTiles(List<Tile> tiles) {
+    if (tiles.isEmpty) return;
+    _tileBag.addAll(
+      tiles.map((t) => t.copyWith(
+        isOnBoard: false,
+        isNewlyPlaced: false,
+        ownerId: null,
+        position: null,
+      ))
+    );
+    _tileBag.shuffle();
   }
   
   /// Returns the number of tiles remaining in the bag

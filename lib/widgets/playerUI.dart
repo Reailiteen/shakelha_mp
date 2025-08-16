@@ -383,6 +383,8 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/widgets/tileUI.dart';
+import 'package:mp_tictactoe/provider/pass_play_provider.dart';
+import 'package:provider/provider.dart';
 
 class PlayerUi extends StatelessWidget {
   const PlayerUi({Key? key, required this.name, required this.points, required this.image, required this.tiles}) : super(key: key);
@@ -392,8 +394,8 @@ class PlayerUi extends StatelessWidget {
   final List<Tile> tiles;
   @override
   Widget build(BuildContext context) {
+    final passPlay = context.read<PassPlayProvider?>();
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     
     return Padding(
       padding: const EdgeInsets.all(4.0),
@@ -419,13 +421,31 @@ class PlayerUi extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: tiles.asMap().entries.map((entry) {
-                  final int index = entry.key;
                   final tile = entry.value;
                   final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
                   
                   return Container(
                     width: tileSize,
                     height: tileSize,
+                    child: Draggable<Tile>(
+                      data: tile,
+                      feedback: SizedBox(
+                        width: tileSize,
+                        height: tileSize,
+                        child: TileUI(
+                          width: tileSize,
+                          height: tileSize,
+                          letter: tile.letter,
+                          points: tile.value,
+                          left: 0,
+                          top: 0,
+                        ),
+                      ),
+                      childWhenDragging: const SizedBox.shrink(),
+                      onDragStarted: () {
+                        // Initialize placing mode if available
+                        if (passPlay != null) passPlay.startPlacingTiles();
+                      },
                     child: TileUI(
                       width: tileSize,
                       height: tileSize,
@@ -433,6 +453,7 @@ class PlayerUi extends StatelessWidget {
                       points: tile.value,
                       left: 0,
                       top: 0,
+                      ),
                     ),
                   );
                 }).toList(),
@@ -515,7 +536,8 @@ class PlayerUi extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              // Handle pass turn
+                              final prov = context.read<PassPlayProvider?>();
+                              prov?.passTurn();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF137F83),
@@ -540,7 +562,131 @@ class PlayerUi extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              // Handle view previous words
+                              // No-op hint UI. Logic to be added later.
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF137F83),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'اقتراح كلمة',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.025,
+                                fontFamily: 'Jomhuria',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 4),
+
+                // Swap and history buttons
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final prov = context.read<PassPlayProvider?>();
+                              if (prov == null) return;
+                              final player = prov.currentPlayer;
+                              if (player == null) return;
+                              if (player.rack.isEmpty) return;
+                              // Swap out all tiles and pass the turn
+                              prov.swapTiles(List<Tile>.from(player.rack));
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF9F6538),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'تبديل الكل',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.025,
+                                fontFamily: 'Jomhuria',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final prov = context.read<PassPlayProvider?>();
+                              if (prov?.room == null) return;
+                              final moves = prov!.room!.moveHistory;
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                                ),
+                                builder: (ctx) {
+                                  return SafeArea(
+                                    child: Container(
+                                      constraints: BoxConstraints(
+                                        maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          const SizedBox(height: 4),
+                                          Center(
+                                            child: Container(
+                                              width: 40,
+                                              height: 4,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade300,
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          const Text(
+                                            'الكلمات السابقة',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: ListView.builder(
+                                              itemCount: moves.length,
+                                              itemBuilder: (c, i) {
+                                                final m = moves[i];
+                                                final player = prov.room!.players.firstWhere((p) => p.id == m.playerId, orElse: () => prov.room!.players.first);
+                                                final words = m.wordsFormed.isNotEmpty ? m.wordsFormed.join('، ') : '—';
+                                                return ListTile(
+                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  title: Text(player.nickname, textDirection: TextDirection.rtl),
+                                                  subtitle: Text('الكلمات: $words', textDirection: TextDirection.rtl),
+                                                  trailing: Text('+${m.points}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF6750A2),

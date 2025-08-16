@@ -11,7 +11,6 @@ class EnemyUi extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     
     return Padding(
       padding: const EdgeInsets.all(3.0),
@@ -78,7 +77,7 @@ class EnemyUi extends StatelessWidget {
           
           const SizedBox(height: 4),
           
-          // Enemy tiles (hidden)
+          // Enemy tiles (show same UI as player tiles)
           Expanded(
             flex: 4,
             child: Container(
@@ -98,38 +97,19 @@ class EnemyUi extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: tiles.asMap().entries.map((entry) {
-                  final int index = entry.key;
                   final tile = entry.value;
                   final double tileSize = (screenWidth - 80) / 7;
                   
-                  return Container(
+                  return SizedBox(
                     width: tileSize,
                     height: tileSize,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B4513),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFEEBD5C),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        tile.letter,
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: tileSize * 0.4,
-                          fontFamily: 'Jomhuria',
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
+                    child: TileUI(
+                      width: tileSize,
+                      height: tileSize,
+                      letter: tile.letter,
+                      points: tile.value,
+                      left: 0,
+                      top: 0,
                     ),
                   );
                 }).toList(),

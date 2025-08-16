@@ -263,17 +263,14 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                               orElse: () => room.players.last,
                             );
                             
-                            // Create sample tiles for enemy with actual letters
-                            final sampleLetters = ['ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ'];
-                            final enemyTiles = List.generate(7, (index) => 
-                              Tile(letter: sampleLetters[index], value: index + 1)
-                            );
+                            // Show opponent's actual rack tiles from room
+                            final opponentRack = otherPlayer.rack;
                             
                             return EnemyUi(
                               name: otherPlayer.nickname,
                               points: otherPlayer.score,
                               image: "https://placehold.co/100x100",
-                              tiles: enemyTiles,
+                              tiles: opponentRack,
                             );
                           }),
                         ),
