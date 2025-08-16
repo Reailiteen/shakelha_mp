@@ -403,7 +403,7 @@ class PlayerUi extends StatelessWidget {
         children: [
           // Tiles rack
           Expanded(
-            flex:10,
+            flex: 12,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(2.0),
@@ -446,13 +446,13 @@ class PlayerUi extends StatelessWidget {
                         // Initialize placing mode if available
                         if (passPlay != null) passPlay.startPlacingTiles();
                       },
-                    child: TileUI(
-                      width: tileSize,
-                      height: tileSize,
-                      letter: tile.letter,
-                      points: tile.value,
-                      left: 0,
-                      top: 0,
+                      child: TileUI(
+                        width: tileSize,
+                        height: tileSize,
+                        letter: tile.letter,
+                        points: tile.value,
+                        left: 0,
+                        top: 0,
                       ),
                     ),
                   );
@@ -463,7 +463,7 @@ class PlayerUi extends StatelessWidget {
           const SizedBox(height: 10),
           // Player info and controls row
           Expanded(
-            flex: 9,
+            flex: 10,
             child: Row(
               children: [
                 // Player avatar and info
@@ -501,7 +501,7 @@ class PlayerUi extends StatelessWidget {
                                 name,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: screenWidth * 0.045,
+                                  fontSize: screenWidth * 0.05,
                                   fontFamily: 'Jomhuria',
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -511,7 +511,7 @@ class PlayerUi extends StatelessWidget {
                                 'نقاط: $points',
                                 style: TextStyle(
                                   color: Colors.white70,
-                                  fontSize: screenWidth * 0.03,
+                                  fontSize: screenWidth * 0.035,
                                   fontFamily: 'Jomhuria',
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -549,7 +549,7 @@ class PlayerUi extends StatelessWidget {
                             child: Text(
                               'تمرير الدور',
                               style: TextStyle(
-                                fontSize: screenWidth * 0.028,
+                                fontSize: screenWidth * 0.034,
                                 fontFamily: 'Jomhuria',
                               ),
                             ),
@@ -574,7 +574,7 @@ class PlayerUi extends StatelessWidget {
                             child: Text(
                               'اقتراح كلمة',
                               style: TextStyle(
-                                fontSize: screenWidth * 0.025,
+                                fontSize: screenWidth * 0.03,
                                 fontFamily: 'Jomhuria',
                               ),
                             ),
@@ -615,7 +615,7 @@ class PlayerUi extends StatelessWidget {
                             child: Text(
                               'تبديل الكل',
                               style: TextStyle(
-                                fontSize: screenWidth * 0.025,
+                                fontSize: screenWidth * 0.03,
                                 fontFamily: 'Jomhuria',
                               ),
                             ),
@@ -641,30 +641,30 @@ class PlayerUi extends StatelessWidget {
                                   return SafeArea(
                                     child: Container(
                                       constraints: BoxConstraints(
-                                        maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+                                        maxHeight: MediaQuery.of(ctx).size.height * 0.9,
                                       ),
-                                      padding: const EdgeInsets.all(12),
+                                      padding: const EdgeInsets.all(24),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
-                                          const SizedBox(height: 4),
+                                          const SizedBox(height: 12),
                                           Center(
                                             child: Container(
-                                              width: 40,
-                                              height: 4,
+                                              width: 120,
+                                              height: 10,
                                               decoration: BoxDecoration(
                                                 color: Colors.grey.shade300,
-                                                borderRadius: BorderRadius.circular(2),
+                                                borderRadius: BorderRadius.circular(6),
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(height: 12),
+                                          const SizedBox(height: 24),
                                           const Text(
                                             'الكلمات السابقة',
                                             textAlign: TextAlign.center,
-                                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                            style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
                                           ),
-                                          const SizedBox(height: 8),
+                                          const SizedBox(height: 24),
                                           Expanded(
                                             child: ListView.builder(
                                               itemCount: moves.length,
@@ -672,11 +672,14 @@ class PlayerUi extends StatelessWidget {
                                                 final m = moves[i];
                                                 final player = prov.room!.players.firstWhere((p) => p.id == m.playerId, orElse: () => prov.room!.players.first);
                                                 final words = m.wordsFormed.isNotEmpty ? m.wordsFormed.join('، ') : '—';
-                                                return ListTile(
-                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                  title: Text(player.nickname, textDirection: TextDirection.rtl),
-                                                  subtitle: Text('الكلمات: $words', textDirection: TextDirection.rtl),
-                                                  trailing: Text('+${m.points}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                return Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                                  child: ListTile(
+                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                    title: Text(player.nickname, textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800)),
+                                                    subtitle: Text('الكلمات: $words', textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 28)),
+                                                    trailing: Text('+${m.points}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                                                  ),
                                                 );
                                               },
                                             ),
@@ -698,7 +701,7 @@ class PlayerUi extends StatelessWidget {
                             child: Text(
                               'الكلمات السابقة',
                               style: TextStyle(
-                                fontSize: screenWidth * 0.025,
+                                fontSize: screenWidth * 0.03,
                                 fontFamily: 'Jomhuria',
                               ),
                             ),

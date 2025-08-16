@@ -1,6 +1,6 @@
 import 'tile.dart';
 import 'position.dart';
-import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
+// Dictionary validation is performed at a higher level (ScrabbleGameLogic)
 
 /// Represents the game board with a grid of tiles
 class Board {
@@ -124,11 +124,13 @@ class Board {
     bool isCol = positions.first.col == positions.last.col;
     if (!isRow && !isCol) return false;
 
-    // Step 3: Collect main word
-    String mainWord;
-    int collectedPoints;
-    (mainWord, collectedPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
-    if (!ArabicDictionary.instance.containsWord(mainWord)) return false;
+    // Must cover center cell on first move
+    final center = centerPosition;
+    final coversCenter = positions.any((p) => p == center);
+    if (!coversCenter) return false;
+
+    // Step 3: Collect main word (we ignore points and dictionary here)
+    final _ = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
 
     isFirstTurn = false;
 
@@ -137,23 +139,7 @@ class Board {
   (bool, int) isValidSubmission(List<Tile> newlyPlacedTiles) {
 
     if (isFirstTurn) {
-      if (newlyPlacedTiles.isEmpty) return (false, 0);
-      // Must be in one row or one column
-      final positions = newlyPlacedTiles.map((t) => t.position!).toList();
-      final bool isRow = positions.first.row == positions.last.row;
-      final bool isCol = positions.first.col == positions.last.col;
-      if (!isRow && !isCol) return (false, 0);
-      // Must cover center cell
-      final center = centerPosition;
-      final coversCenter = positions.any((p) => p == center);
-      if (!coversCenter) return (false, 0);
-      // Build main word and validate
-      String mainWord;
-      int collectedPoints;
-      (mainWord, collectedPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
-      if (!ArabicDictionary.instance.containsWord(mainWord)) return (false, 0);
-      isFirstTurn = false;
-      return (true, collectedPoints);
+      return (isValidFirstTurn(newlyPlacedTiles), 0);
     }
   if (newlyPlacedTiles.isEmpty ) return (false, 0);
 
@@ -175,22 +161,14 @@ class Board {
     }
   }
   if (!isConnected) return (false, 0);
-  String mainWord;
   int collectedPoints;
-  // Step 3: Collect main word
-  (mainWord, collectedPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
-  if (!ArabicDictionary.instance.containsWord(mainWord)) return (false, 0);
+  // Step 3: Collect main word (ignore actual string here)
+  collectedPoints = buildWordFrom(newlyPlacedTiles.first.position!, isRow).$2;
 
   // Step 4: Check perpendicular words from each new tile
   for (final tile in newlyPlacedTiles) {
-    String perpendicularWord;
-    int newPoints;
-    (perpendicularWord, newPoints) = buildWordFrom(tile.position!, !isRow);
-    if (perpendicularWord.length > 1 &&
-        !ArabicDictionary.instance.containsWord(perpendicularWord)) {
-      return (false, 0);
-    }
-    collectedPoints += newPoints;
+    final pair = buildWordFrom(tile.position!, !isRow);
+    collectedPoints += pair.$2;
   }
 
   return (true, collectedPoints);
@@ -248,7 +226,7 @@ class Board {
   void removeTile(Position position) {
 
     Tile tile = getTileAt(position)!;
-    if (!_isValidPosition(position) || tile == null) {
+    if (!_isValidPosition(position)) {
       return;
     }
     tile.position = null;

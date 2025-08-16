@@ -246,7 +246,6 @@ class Topbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
@@ -314,11 +313,10 @@ class Topbar extends StatelessWidget {
                   child: Text(
                     currentText,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       color: Colors.white,
-                      fontSize: screenWidth * 0.055, // Responsive font size
-                      fontFamily: 'Jomhuria',
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w800,
+                      fontSize: screenWidth * 0.055,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 2,

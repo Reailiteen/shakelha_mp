@@ -50,6 +50,7 @@ final ThemeData appTheme = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark, // mid-tone leaning dark for contrast
   scaffoldBackgroundColor: AppColors.background,
+  fontFamily: GoogleFonts.jomhuria().fontFamily,
   colorScheme: const ColorScheme(
     brightness: Brightness.dark,
     primary: AppColors.primary,
@@ -71,22 +72,9 @@ final ThemeData appTheme = ThemeData(
   ),
   cardColor: AppColors.surface,
   dialogBackgroundColor: AppColors.surface,
-  textTheme: const TextTheme(
-    displayLarge: TextStyle(fontSize: FontSizes.displayLarge, fontWeight: FontWeight.w800, color: AppColors.onSurface),
-    displayMedium: TextStyle(fontSize: FontSizes.displayMedium, fontWeight: FontWeight.w700, color: AppColors.onSurface),
-    displaySmall: TextStyle(fontSize: FontSizes.displaySmall, fontWeight: FontWeight.w700, color: AppColors.onSurface),
-    headlineLarge: TextStyle(fontSize: FontSizes.headlineLarge, fontWeight: FontWeight.w700, color: AppColors.onSurface),
-    headlineMedium: TextStyle(fontSize: FontSizes.headlineMedium, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    headlineSmall: TextStyle(fontSize: FontSizes.headlineSmall, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    titleLarge: TextStyle(fontSize: FontSizes.titleLarge, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    titleMedium: TextStyle(fontSize: FontSizes.titleMedium, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    titleSmall: TextStyle(fontSize: FontSizes.titleSmall, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    bodyLarge: TextStyle(fontSize: FontSizes.bodyLarge, color: AppColors.onSurface),
-    bodyMedium: TextStyle(fontSize: FontSizes.bodyMedium, color: AppColors.onSurface),
-    bodySmall: TextStyle(fontSize: FontSizes.bodySmall, color: AppColors.onSurface),
-    labelLarge: TextStyle(fontSize: FontSizes.labelLarge, fontWeight: FontWeight.w600, color: AppColors.onSurface),
-    labelMedium: TextStyle(fontSize: FontSizes.labelMedium, color: AppColors.onSurface),
-    labelSmall: TextStyle(fontSize: FontSizes.labelSmall, color: AppColors.onSurface),
+  textTheme: GoogleFonts.jomhuriaTextTheme(ThemeData.dark().textTheme).apply(
+    bodyColor: AppColors.onSurface,
+    displayColor: AppColors.onSurface,
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
@@ -162,6 +150,7 @@ const Color desertSand = AppColors.secondary;
 
 ThemeData get lightTheme => ThemeData(
   useMaterial3: true,
+  fontFamily: GoogleFonts.jomhuria().fontFamily,
   colorScheme: ColorScheme.light(
     primary: AppColors.primary,
     onPrimary: AppColors.onPrimary,
@@ -184,72 +173,12 @@ ThemeData get lightTheme => ThemeData(
     foregroundColor: LightModeColors.lightOnPrimaryContainer,
     elevation: 0,
   ),
-  textTheme: TextTheme(
-    displayLarge: GoogleFonts.inter(
-      fontSize: FontSizes.displayLarge,
-      fontWeight: FontWeight.normal,
-    ),
-    displayMedium: GoogleFonts.inter(
-      fontSize: FontSizes.displayMedium,
-      fontWeight: FontWeight.normal,
-    ),
-    displaySmall: GoogleFonts.inter(
-      fontSize: FontSizes.displaySmall,
-      fontWeight: FontWeight.w600,
-    ),
-    headlineLarge: GoogleFonts.inter(
-      fontSize: FontSizes.headlineLarge,
-      fontWeight: FontWeight.normal,
-    ),
-    headlineMedium: GoogleFonts.inter(
-      fontSize: FontSizes.headlineMedium,
-      fontWeight: FontWeight.w500,
-    ),
-    headlineSmall: GoogleFonts.inter(
-      fontSize: FontSizes.headlineSmall,
-      fontWeight: FontWeight.bold,
-    ),
-    titleLarge: GoogleFonts.inter(
-      fontSize: FontSizes.titleLarge,
-      fontWeight: FontWeight.w500,
-    ),
-    titleMedium: GoogleFonts.inter(
-      fontSize: FontSizes.titleMedium,
-      fontWeight: FontWeight.w500,
-    ),
-    titleSmall: GoogleFonts.inter(
-      fontSize: FontSizes.titleSmall,
-      fontWeight: FontWeight.w500,
-    ),
-    labelLarge: GoogleFonts.inter(
-      fontSize: FontSizes.labelLarge,
-      fontWeight: FontWeight.w500,
-    ),
-    labelMedium: GoogleFonts.inter(
-      fontSize: FontSizes.labelMedium,
-      fontWeight: FontWeight.w500,
-    ),
-    labelSmall: GoogleFonts.inter(
-      fontSize: FontSizes.labelSmall,
-      fontWeight: FontWeight.w500,
-    ),
-    bodyLarge: GoogleFonts.inter(
-      fontSize: FontSizes.bodyLarge,
-      fontWeight: FontWeight.normal,
-    ),
-    bodyMedium: GoogleFonts.inter(
-      fontSize: FontSizes.bodyMedium,
-      fontWeight: FontWeight.normal,
-    ),
-    bodySmall: GoogleFonts.inter(
-      fontSize: FontSizes.bodySmall,
-      fontWeight: FontWeight.normal,
-    ),
-  ),
+  textTheme: GoogleFonts.jomhuriaTextTheme(ThemeData.light().textTheme),
 );
 
 ThemeData get darkTheme => ThemeData(
   useMaterial3: true,
+  fontFamily: GoogleFonts.jomhuria().fontFamily,
   colorScheme: ColorScheme.dark(
     primary: AppColors.primary,
     onPrimary: AppColors.onPrimary,
@@ -274,66 +203,8 @@ ThemeData get darkTheme => ThemeData(
     foregroundColor: AppColors.onSurface,
     elevation: 0,
   ),
-  textTheme: TextTheme(
-    displayLarge: GoogleFonts.inter(
-      fontSize: FontSizes.displayLarge,
-      fontWeight: FontWeight.normal,
-    ),
-    displayMedium: GoogleFonts.inter(
-      fontSize: FontSizes.displayMedium,
-      fontWeight: FontWeight.normal,
-    ),
-    displaySmall: GoogleFonts.inter(
-      fontSize: FontSizes.displaySmall,
-      fontWeight: FontWeight.w600,
-    ),
-    headlineLarge: GoogleFonts.inter(
-      fontSize: FontSizes.headlineLarge,
-      fontWeight: FontWeight.normal,
-    ),
-    headlineMedium: GoogleFonts.inter(
-      fontSize: FontSizes.headlineMedium,
-      fontWeight: FontWeight.w500,
-    ),
-    headlineSmall: GoogleFonts.inter(
-      fontSize: FontSizes.headlineSmall,
-      fontWeight: FontWeight.bold,
-    ),
-    titleLarge: GoogleFonts.inter(
-      fontSize: FontSizes.titleLarge,
-      fontWeight: FontWeight.w500,
-    ),
-    titleMedium: GoogleFonts.inter(
-      fontSize: FontSizes.titleMedium,
-      fontWeight: FontWeight.w500,
-    ),
-    titleSmall: GoogleFonts.inter(
-      fontSize: FontSizes.titleSmall,
-      fontWeight: FontWeight.w500,
-    ),
-    labelLarge: GoogleFonts.inter(
-      fontSize: FontSizes.labelLarge,
-      fontWeight: FontWeight.w500,
-    ),
-    labelMedium: GoogleFonts.inter(
-      fontSize: FontSizes.labelMedium,
-      fontWeight: FontWeight.w500,
-    ),
-    labelSmall: GoogleFonts.inter(
-      fontSize: FontSizes.labelSmall,
-      fontWeight: FontWeight.w500,
-    ),
-    bodyLarge: GoogleFonts.inter(
-      fontSize: FontSizes.bodyLarge,
-      fontWeight: FontWeight.normal,
-    ),
-    bodyMedium: GoogleFonts.inter(
-      fontSize: FontSizes.bodyMedium,
-      fontWeight: FontWeight.normal,
-    ),
-    bodySmall: GoogleFonts.inter(
-      fontSize: FontSizes.bodySmall,
-      fontWeight: FontWeight.normal,
-    ),
+  textTheme: GoogleFonts.jomhuriaTextTheme(ThemeData.dark().textTheme).apply(
+    bodyColor: AppColors.onSurface,
+    displayColor: AppColors.onSurface,
   ),
 );

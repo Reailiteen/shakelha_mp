@@ -159,6 +159,7 @@
 
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class TileUI extends StatelessWidget {
   const TileUI({Key? key, required this.width, required this.height, required this.letter, required this.points,required this.top,required this.left}) : super(key: key);
@@ -254,12 +255,13 @@ class TileUI extends StatelessWidget {
               child: Text(
                 letter,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: const Color(0xFF50271A),
-                  fontSize: width * 0.56, // Slightly bigger
-                  fontFamily: 'Jomhuria',
-                  fontWeight: FontWeight.w800, // thicker font
-                  height: 1.0,
+                style: GoogleFonts.jomhuria(
+                  textStyle: TextStyle(
+                    color: const Color(0xFF50271A),
+                    fontSize: width * 0.56, // Slightly bigger
+                    fontWeight: FontWeight.w800, // thicker font
+                    height: 1.0,
+                  ),
                 ),
               ),
             ),
@@ -271,11 +273,12 @@ class TileUI extends StatelessWidget {
             bottom: width * 0.05,
             child: Text(
               points.toString(),
-              style: TextStyle(
-                color: const Color(0xFF50271A),
-                fontSize: width * 0.22,
-                fontFamily: 'Jomhuria',
-                fontWeight: FontWeight.w700,
+              style: GoogleFonts.jomhuria(
+                textStyle: TextStyle(
+                  color: const Color(0xFF50271A),
+                  fontSize: width * 0.22,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
+import 'dawg.dart';
 
 /// Singleton Arabic dictionary loader backed by a HashSet for O(1) lookup.
 /// Loads words from asset: lib/data/words/validWords.txt (one word per line).
@@ -8,6 +9,7 @@ class ArabicDictionary {
   static final ArabicDictionary instance = ArabicDictionary._();
 
   Set<String>? _words; // normalized words
+  Dawg? _dawg;
   Future<void>? _loading;
 
   bool get isReady => _words != null;
@@ -25,15 +27,17 @@ class ArabicDictionary {
       final w = _normalize(line);
       if (w.isNotEmpty) set.add(w);
     }
+    final sorted = set.toList()..sort();
     _words = set;
+    _dawg = Dawg.buildFromSorted(sorted);
   }
 
   // Public API
   bool containsWord(String word) {
     final normalized = _normalize(word);
-    final ws = _words;
-    if (ws == null) return false; // not ready yet
-    return ws.contains(normalized);
+    final d = _dawg;
+    if (d == null) return false;
+    return d.contains(normalized);
   }
 
   List<String> getInvalidWords(List<String> words) {
@@ -52,18 +56,11 @@ class ArabicDictionary {
   }
 
   List<String> getSuggestions(String partial, {int max = 10}) {
-    final ws = _words;
-    if (ws == null) return const [];
+    final d = _dawg;
+    if (d == null) return const [];
     final p = _normalize(partial);
     if (p.length < 2) return const [];
-    final out = <String>[];
-    for (final w in ws) {
-      if (w.startsWith(p)) {
-        out.add(w);
-        if (out.length >= max) break;
-      }
-    }
-    return out;
+    return d.suggestions(p, max: max);
   }
 
   // Normalization suitable for Arabic Scrabble dictionary matches.

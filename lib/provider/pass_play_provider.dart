@@ -420,7 +420,7 @@ class PassPlayProvider extends ChangeNotifier {
       return false;
     }
 
-    // Clone board and validate using Board.isValidSubmission (with pending applied)
+    // Clone board and validate using Board.isValidSubmission (rules only; dictionary checked by ScrabbleGameLogic)
     final originalBoard = _room!.board;
     final tempBoard = Board.fromJson(originalBoard.toJson());
     tempBoard.isFirstTurn = originalBoard.isFirstTurn;
@@ -455,13 +455,18 @@ class PassPlayProvider extends ChangeNotifier {
       players[playerIdx] = players[playerIdx].copyWith(rack: [...afterScore.rack, ...drawn]);
     }
 
-    // Record move (words omitted here; Board.isValidSubmission doesn't return them)
+    // Record move with words formed via ScrabbleGameLogic (dictionary)
+    final validation2 = ScrabbleGameLogic.validateMove(
+      room: _room!,
+      playerId: _currentPlayerId!,
+      placedTiles: List<PlacedTile>.from(_pendingPlacements),
+    );
     final move = Move(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       playerId: _currentPlayerId!,
       type: MoveType.place,
       placedTiles: List<PlacedTile>.from(_pendingPlacements),
-      wordsFormed: const [],
+      wordsFormed: validation2.isValid ? List<String>.from(validation2.wordsFormed) : const [],
       points: points,
     );
 
@@ -473,7 +478,7 @@ class PassPlayProvider extends ChangeNotifier {
     ).switchToNextPlayer();
 
     // UI state
-    _lastSubmittedWords = const [];
+    _lastSubmittedWords = move.wordsFormed;
     _isPlacingTiles = false;
     _pendingPlacements.clear();
     _selectedTiles.clear();

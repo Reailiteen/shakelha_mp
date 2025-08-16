@@ -4,6 +4,7 @@ import 'package:mp_tictactoe/models/move.dart';
 import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // Grid cell widget for responsive board tiles
 class GridCell extends StatelessWidget {
@@ -251,12 +252,13 @@ class BoardUI extends StatelessWidget {
                           Center(
                             child: Text(
                               letter,
-                              style: TextStyle(
-                                color: const Color(0xFF50271A),
-                                fontSize: size * 1.6,
-                                fontFamily: 'Jomhuria',
-                                fontWeight: FontWeight.w800,
-                                height: 1.0,
+                              style: GoogleFonts.jomhuria(
+                                textStyle: TextStyle(
+                                  color: const Color(0xFF50271A),
+                                  fontSize: size * 2.2,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.0,
+                                ),
                               ),
                               textDirection: TextDirection.rtl,
                             ),
@@ -267,11 +269,12 @@ class BoardUI extends StatelessWidget {
                             bottom: size * 0.05,
                             child: Text(
                               points.toString(),
-                              style: TextStyle(
-                                color: const Color(0xFF50271A),
-                                fontSize: size ,
-                                fontFamily: 'Jomhuria',
-                                fontWeight: FontWeight.w700,
+                              style: GoogleFonts.jomhuria(
+                                textStyle: TextStyle(
+                                  color: const Color(0xFF50271A),
+                                  fontSize: size * 1.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
