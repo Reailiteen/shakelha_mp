@@ -446,13 +446,13 @@ class PlayerUi extends StatelessWidget {
                         // Initialize placing mode if available
                         if (passPlay != null) passPlay.startPlacingTiles();
                       },
-                      child: TileUI(
-                        width: tileSize,
-                        height: tileSize,
-                        letter: tile.letter,
-                        points: tile.value,
-                        left: 0,
-                        top: 0,
+                    child: TileUI(
+                      width: tileSize,
+                      height: tileSize,
+                      letter: tile.letter,
+                      points: tile.value,
+                      left: 0,
+                      top: 0,
                       ),
                     ),
                   );

@@ -211,7 +211,7 @@ class BoardUI extends StatelessWidget {
                           Container(
                             decoration: BoxDecoration(
                               color: const Color(0xFFEEBD5C),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(5),
                             ),
                           ),
                           Container(
@@ -249,15 +249,16 @@ class BoardUI extends StatelessWidget {
                             ),
                           ),
                           // Letter (thicker and centered)
+                         
                           Center(
                             child: Text(
                               letter,
                               style: GoogleFonts.jomhuria(
                                 textStyle: TextStyle(
                                   color: const Color(0xFF50271A),
-                                  fontSize: size * 2.2,
+                                  fontSize: size * 1.2,
                                   fontWeight: FontWeight.w800,
-                                  height: 1.0,
+                                  height: 0.4,
                                 ),
                               ),
                               textDirection: TextDirection.rtl,
@@ -265,15 +266,16 @@ class BoardUI extends StatelessWidget {
                           ),
                           // Points (always visible)
                           Positioned(
-                            right: size * 0.1,
-                            bottom: size * 0.05,
+                            right: size * 0.07,
+                            bottom: size * 0.03,
                             child: Text(
                               points.toString(),
                               style: GoogleFonts.jomhuria(
                                 textStyle: TextStyle(
                                   color: const Color(0xFF50271A),
-                                  fontSize: size * 1.5,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: size * 0.5,
+                                  fontWeight: FontWeight.w800,
+                                  height: 0.4,
                                 ),
                               ),
                             ),

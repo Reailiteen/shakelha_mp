@@ -258,7 +258,7 @@ class TileUI extends StatelessWidget {
                 style: GoogleFonts.jomhuria(
                   textStyle: TextStyle(
                     color: const Color(0xFF50271A),
-                    fontSize: width * 0.56, // Slightly bigger
+                    fontSize: width * 0.7, // Slightly bigger
                     fontWeight: FontWeight.w800, // thicker font
                     height: 1.0,
                   ),
@@ -269,14 +269,14 @@ class TileUI extends StatelessWidget {
 
           // Points (always visible, bottom right)
           Positioned(
-            right: width * 0.1,
-            bottom: width * 0.05,
+            right: width * 0.07,
+            bottom: width * 0.03,
             child: Text(
               points.toString(),
               style: GoogleFonts.jomhuria(
                 textStyle: TextStyle(
                   color: const Color(0xFF50271A),
-                  fontSize: width * 0.22,
+                  fontSize: width * 0.3,
                   fontWeight: FontWeight.w700,
                 ),
               ),

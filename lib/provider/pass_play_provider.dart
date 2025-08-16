@@ -420,17 +420,14 @@ class PassPlayProvider extends ChangeNotifier {
       return false;
     }
 
-    // Clone board and validate using Board.isValidSubmission (rules only; dictionary checked by ScrabbleGameLogic)
+    // Centralized validation via Board
     final originalBoard = _room!.board;
     final tempBoard = Board.fromJson(originalBoard.toJson());
     tempBoard.isFirstTurn = originalBoard.isFirstTurn;
-    for (final pt in _pendingPlacements) {
-      tempBoard.placeTile(pt.tile, pt.position);
-    }
-    final newlyPlaced = _pendingPlacements.map((pt) => pt.tile).toList();
-    final (isValid, points) = tempBoard.isValidSubmission(newlyPlaced);
-    if (!isValid) {
-      _setErrorMessage('الحركة غير صالحة');
+    final newlyPlaced = _pendingPlacements.map((pt) => pt.tile.copyWith(position: pt.position)).toList();
+    final (ok, msg, points, words) = tempBoard.validateAndScoreMove(newlyPlaced);
+    if (!ok) {
+      _setErrorMessage(msg);
       return false;
     }
 
@@ -455,18 +452,12 @@ class PassPlayProvider extends ChangeNotifier {
       players[playerIdx] = players[playerIdx].copyWith(rack: [...afterScore.rack, ...drawn]);
     }
 
-    // Record move with words formed via ScrabbleGameLogic (dictionary)
-    final validation2 = ScrabbleGameLogic.validateMove(
-      room: _room!,
-      playerId: _currentPlayerId!,
-      placedTiles: List<PlacedTile>.from(_pendingPlacements),
-    );
     final move = Move(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       playerId: _currentPlayerId!,
       type: MoveType.place,
       placedTiles: List<PlacedTile>.from(_pendingPlacements),
-      wordsFormed: validation2.isValid ? List<String>.from(validation2.wordsFormed) : const [],
+      wordsFormed: words,
       points: points,
     );
 
@@ -474,6 +465,7 @@ class PassPlayProvider extends ChangeNotifier {
       board: committedBoard,
       players: players,
       moveHistory: [..._room!.moveHistory, move],
+      isFirstMove: false,
       updatedAt: DateTime.now(),
     ).switchToNextPlayer();
 

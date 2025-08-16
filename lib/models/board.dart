@@ -1,6 +1,6 @@
 import 'tile.dart';
 import 'position.dart';
-// Dictionary validation is performed at a higher level (ScrabbleGameLogic)
+import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 
 /// Represents the game board with a grid of tiles
 class Board {
@@ -173,6 +173,54 @@ class Board {
 
   return (true, collectedPoints);
 }
+
+  /// Validates a move and the words formed using in-board rules and Arabic dictionary.
+  /// Returns (isValid, message, points, wordsFormed)
+  (bool, String, int, List<String>) validateAndScoreMove(List<Tile> newlyPlacedTiles) {
+    // Rule check
+    final (ok, pts) = isValidSubmission(newlyPlacedTiles);
+    if (!ok) return (false, 'الحركة غير صالحة', 0, const []);
+
+    // Build words formed by overlaying tiles on a temp board
+    final temp = Board.fromJson(toJson());
+    for (final t in newlyPlacedTiles) {
+      temp.placeTile(t, t.position!);
+    }
+    final words = temp._collectWordsFormed(newlyPlacedTiles);
+
+    // Dictionary check
+    final dict = ArabicDictionary.instance;
+    if (!dict.isReady) {
+      // Soft-fail to avoid false negatives; ask user to retry
+      return (false, 'القاموس غير جاهز', 0, const []);
+    }
+    for (final w in words) {
+      if (w.trim().length < 2) {
+        return (false, 'كلمة قصيرة: $w', 0, const []);
+      }
+      if (!dict.containsWord(w)) {
+        return (false, 'كلمة غير موجودة: $w', 0, const []);
+      }
+    }
+
+    return (true, 'صحيحة', pts, words);
+  }
+
+  List<String> _collectWordsFormed(List<Tile> newlyPlacedTiles) {
+    // Determine primary direction using first and last tile pos
+    final pos = newlyPlacedTiles.map((t) => t.position!).toList();
+    final isRow = pos.first.row == pos.last.row;
+
+    final words = <String>[];
+    final (main, _) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+    if (main.length > 1) words.add(main);
+
+    for (final t in newlyPlacedTiles) {
+      final (cross, __) = buildWordFrom(t.position!, !isRow);
+      if (cross.length > 1) words.add(cross);
+    }
+    return words;
+  }
 
 /// Builds a word starting from a given position in a direction.
   (String, int) buildWordFrom(Position start, bool isRow) {

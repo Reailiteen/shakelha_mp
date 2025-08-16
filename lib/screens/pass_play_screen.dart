@@ -237,7 +237,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                         
                         // Top Bar - 10% of screen height
                         SizedBox(
-                          height: constraints.maxHeight * 0.09,
+                          height: constraints.maxHeight * 0.07,
                           child: Builder(builder: (context) {
                             final g = context.watch<GameProvider>();
                             final r = g.room;
@@ -277,7 +277,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                         
                         // Game Board - 50% of screen height (main content)
                         Expanded(
-                          flex: 4,
+                          flex: 6,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2.0),
                             child: BoardUI(),

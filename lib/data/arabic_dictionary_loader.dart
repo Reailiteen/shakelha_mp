@@ -1,75 +1,113 @@
-import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'dawg.dart';
 
-/// Singleton Arabic dictionary loader backed by a HashSet for O(1) lookup.
-/// Loads words from asset: lib/data/words/validWords.txt (one word per line).
+/// Simple DAWG-like structure for exact contains and prefix suggestions
+class _TrieNode {
+  final Map<int, _TrieNode> children = {};
+  bool isWord = false;
+}
+
 class ArabicDictionary {
   ArabicDictionary._();
   static final ArabicDictionary instance = ArabicDictionary._();
 
-  Set<String>? _words; // normalized words
-  Dawg? _dawg;
-  Future<void>? _loading;
+  _TrieNode? _root;
+  bool get isReady => _root != null;
 
-  bool get isReady => _words != null;
-
-  /// Call once early (e.g., in GameScreen.initState) to ensure dictionary is ready.
-  Future<void> preload() {
-    _loading ??= _load();
-    return _loading!;
+  Future<void> preload() async {
+    if (_root != null) return;
+    try {
+      await _loadFromJson();
+      // Sanity: if empty, fallback to txt
+      if (_root == null) {
+        await _loadFromTxt();
+      }
+    } catch (_) {
+      await _loadFromTxt();
+    }
   }
 
-  Future<void> _load() async {
+  Future<void> _loadFromJson() async {
+    final raw = await rootBundle.loadString('lib/data/words/validWords.json');
+    final List<dynamic> list = jsonDecode(raw);
+    final words = <String>[];
+    for (final item in list) {
+      final w = _normalize(item.toString());
+      if (w.isNotEmpty) words.add(w);
+    }
+    words.sort();
+    final root = _TrieNode();
+    for (final w in words) {
+      _insert(root, w);
+    }
+    _root = root;
+  }
+
+  Future<void> _loadFromTxt() async {
     final raw = await rootBundle.loadString('lib/data/words/validWords.txt');
-    final set = <String>{};
+    final words = <String>[];
     for (final line in raw.split(RegExp(r'\r?\n'))) {
       final w = _normalize(line);
-      if (w.isNotEmpty) set.add(w);
+      if (w.isNotEmpty) words.add(w);
     }
-    final sorted = set.toList()..sort();
-    _words = set;
-    _dawg = Dawg.buildFromSorted(sorted);
-  }
-
-  // Public API
-  bool containsWord(String word) {
-    final normalized = _normalize(word);
-    final d = _dawg;
-    if (d == null) return false;
-    return d.contains(normalized);
-  }
-
-  List<String> getInvalidWords(List<String> words) {
-    final ws = _words;
-    if (ws == null) return words; // not ready yet => treat all as invalid so user gets feedback
-    final invalid = <String>[];
+    words.sort();
+    final root = _TrieNode();
     for (final w in words) {
-      final n = _normalize(w);
-      if (n.length < 2) {
-        invalid.add(w);
-        continue;
-      }
-      if (!ws.contains(n)) invalid.add(w);
+      _insert(root, w);
     }
-    return invalid;
+    _root = root;
+  }
+
+  void _insert(_TrieNode root, String word) {
+    var node = root;
+    for (final cp in word.runes) {
+      node = node.children.putIfAbsent(cp, () => _TrieNode());
+    }
+    node.isWord = true;
+  }
+
+  bool containsWord(String word) {
+    final r = _root;
+    if (r == null) return false;
+    var node = r;
+    for (final cp in _normalize(word).runes) {
+      final next = node.children[cp];
+      if (next == null) return false;
+      node = next;
+    }
+    return node.isWord;
   }
 
   List<String> getSuggestions(String partial, {int max = 10}) {
-    final d = _dawg;
-    if (d == null) return const [];
+    final r = _root;
+    if (r == null) return const [];
     final p = _normalize(partial);
-    if (p.length < 2) return const [];
-    return d.suggestions(p, max: max);
+    var node = r;
+    for (final cp in p.runes) {
+      final next = node.children[cp];
+      if (next == null) return const [];
+      node = next;
+    }
+    final out = <String>[];
+    void dfs(_TrieNode n, List<int> acc) {
+      if (out.length >= max) return;
+      if (n.isWord) out.add(p + String.fromCharCodes(acc));
+      final keys = n.children.keys.toList()..sort();
+      for (final k in keys) {
+        acc.add(k);
+        dfs(n.children[k]!, acc);
+        acc.removeLast();
+        if (out.length >= max) return;
+      }
+    }
+    dfs(node, <int>[]);
+    return out;
   }
 
-  // Normalization suitable for Arabic Scrabble dictionary matches.
   String _normalize(String word) {
     var s = word.trim();
     if (s.isEmpty) return s;
-    // Remove diacritics
     s = s.replaceAll(RegExp(r'[\u064B-\u0652]'), '');
-    // Normalize forms
     s = s
         .replaceAll('أ', 'ا')
         .replaceAll('إ', 'ا')
@@ -82,3 +120,5 @@ class ArabicDictionary {
     return s;
   }
 }
+
+

@@ -6,7 +6,7 @@ import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/models/position.dart';
 import 'package:mp_tictactoe/models/room.dart';
 import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
+// Dictionary handled by Board validator
 
 class ScrabbleGameLogic {
   static const int boardSize = 15;
@@ -57,7 +57,7 @@ class ScrabbleGameLogic {
     
     // 4. Check if tiles are in a straight line (same row or column)
     if (!_areTilesInStraightLine(placedTiles)) {
-      return MoveValidationResult(
+      return const MoveValidationResult(
         isValid: false,
         message: 'Tiles must be placed in a straight line!',
       );
@@ -65,7 +65,7 @@ class ScrabbleGameLogic {
 
     // 4b. Enforce contiguity across the span (no gaps between min..max when considering existing board tiles)
     if (!_isContiguousWithBoard(board, placedTiles)) {
-      return MoveValidationResult(
+      return const MoveValidationResult(
         isValid: false,
         message: 'Tiles must be contiguous without gaps!',
       );
@@ -73,7 +73,7 @@ class ScrabbleGameLogic {
     
     // 5. Check if the move connects with existing tiles (except first move)
     if (!room.isFirstMove && !_isMoveConnectedToExistingTiles(board, placedTiles)) {
-      return MoveValidationResult(
+      return const MoveValidationResult(
         isValid: false,
         message: 'Your move must connect with existing tiles!',
       );
@@ -90,19 +90,12 @@ class ScrabbleGameLogic {
       }
     }
     
-    // 7. Build main and cross words and validate
-    final words = _findWordsFormed(board, placedTiles);
-    final invalidWords = _getInvalidWords(words);
-    
-    if (invalidWords.isNotEmpty) {
-      return MoveValidationResult(
-        isValid: false,
-        message: 'Invalid words: ${invalidWords.join(', ')}',
-      );
+    // 7/8. Defer to board centralized validator for words and points
+    final overlayTiles = placedTiles.map((pt) => pt.tile.copyWith(position: pt.position)).toList();
+    final (ok, msg, points, words) = board.validateAndScoreMove(overlayTiles);
+    if (!ok) {
+      return MoveValidationResult(isValid: false, message: msg);
     }
-    
-    // 8. Calculate points (simple sum for now)
-    final points = _calculatePoints(board, placedTiles, words);
     
     return MoveValidationResult(
       isValid: true,
@@ -287,126 +280,6 @@ class ScrabbleGameLogic {
     return false;
   }
   
-  static List<String> _getInvalidWords(List<String> words) {
-    // Validate words using the Arabic dictionary singleton (hash set)
-    final dict = ArabicDictionary.instance;
-    return dict.getInvalidWords(words);
-  }
-  
-  static int _calculatePoints(Board board, List<PlacedTile> placedTiles, List<String> words) {
-    // TODO: Implement point calculation with bonuses
-    // For now, just sum the values of placed tiles
-    return placedTiles.fold(0, (sum, tile) => sum + tile.tile.value);
-  }
-  
-  static List<String> _findWordsFormed(Board board, List<PlacedTile> placedTiles) {
-    // Determine direction
-    final horizontal = placedTiles.length == 1
-        ? _hasNeighbor(board, placedTiles.first.position, horizontal: true)
-        : placedTiles.every((t) => t.position.row == placedTiles.first.position.row);
-
-    // Helper to get letter at a position considering placed tiles overlay
-    String? letterAt(Position p) {
-      final inPlaced = placedTiles.firstWhere(
-        (pt) => pt.position == p,
-        orElse: () => PlacedTile(tile: Tile(letter: ''), position: p),
-      );
-      if (inPlaced.tile.letter.isNotEmpty) return inPlaced.tile.letter;
-      final existing = board.getTileAt(p);
-      return existing?.letter;
-    }
-
-    final words = <String>[];
-
-    // Build main word by scanning to both sides
-    final base = placedTiles.first.position;
-    int r = base.row;
-    int c = base.col;
-    if (horizontal) {
-      // Move left to start
-      int cc = c;
-      while (cc - 1 >= 0 && letterAt(Position(row: r, col: cc - 1)) != null) {
-        cc--;
-      }
-      final buffer = StringBuffer();
-      while (cc < 15) {
-        final l = letterAt(Position(row: r, col: cc));
-        if (l == null) break;
-        buffer.write(l);
-        cc++;
-      }
-      final w = buffer.toString();
-      // Arabic horizontal words are right-to-left
-      final rtl = _reverseIfArabic(w);
-      if (rtl.length > 1) words.add(rtl);
-    } else {
-      // Vertical main word
-      int rr = r;
-      while (rr - 1 >= 0 && letterAt(Position(row: rr - 1, col: c)) != null) {
-        rr--;
-      }
-      final buffer = StringBuffer();
-      while (rr < 15) {
-        final l = letterAt(Position(row: rr, col: c));
-        if (l == null) break;
-        buffer.write(l);
-        rr++;
-      }
-      final w = buffer.toString();
-      if (w.length > 1) words.add(w);
-    }
-
-    // Build cross words for each placed tile
-    for (final pt in placedTiles) {
-      final pr = pt.position.row;
-      final pc = pt.position.col;
-      if (horizontal) {
-        // Build vertical cross word at (pr, pc)
-        int rr = pr;
-        while (rr - 1 >= 0 && letterAt(Position(row: rr - 1, col: pc)) != null) rr--;
-        final buffer = StringBuffer();
-        while (rr < 15) {
-          final l = letterAt(Position(row: rr, col: pc));
-          if (l == null) break;
-          buffer.write(l);
-          rr++;
-        }
-        final w = buffer.toString();
-        if (w.length > 1) words.add(w);
-      } else {
-        // Build horizontal cross word at (pr, pc)
-        int cc = pc;
-        while (cc - 1 >= 0 && letterAt(Position(row: pr, col: cc - 1)) != null) cc--;
-        final buffer = StringBuffer();
-        while (cc < 15) {
-          final l = letterAt(Position(row: pr, col: cc));
-          if (l == null) break;
-          buffer.write(l);
-          cc++;
-        }
-        final w = buffer.toString();
-        final rtl = _reverseIfArabic(w);
-        if (rtl.length > 1) words.add(rtl);
-      }
-    }
-
-    // If no words > 1 found and only one tile placed, treat single letter as invalid word later
-    if (words.isEmpty && placedTiles.length == 1) {
-      words.add(placedTiles.first.tile.letter);
-    }
-    return words;
-  }
-
-  /// For Arabic, horizontal words should be right-to-left. Reverse the string.
-  /// For other scripts, you could extend this to detect and handle differently.
-  static String _reverseIfArabic(String s) {
-    if (s.isEmpty) return s;
-    // Heuristic: if any Arabic letters present, reverse. Keep simple for now.
-    final hasArabic = s.runes.any((cp) => (cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F));
-    if (!hasArabic) return s;
-    final runes = s.runes.toList().reversed;
-    return String.fromCharCodes(runes);
-  }
 
   static bool _isContiguousWithBoard(Board board, List<PlacedTile> placedTiles) {
     if (placedTiles.isEmpty) return false;
@@ -437,16 +310,6 @@ class ScrabbleGameLogic {
       return true;
     }
     return false;
-  }
-
-  static bool _hasNeighbor(Board board, Position pos, {required bool horizontal}) {
-    if (horizontal) {
-      return (pos.col - 1 >= 0 && board.getTileAt(Position(row: pos.row, col: pos.col - 1)) != null) ||
-          (pos.col + 1 < boardSize && board.getTileAt(Position(row: pos.row, col: pos.col + 1)) != null);
-    } else {
-      return (pos.row - 1 >= 0 && board.getTileAt(Position(row: pos.row - 1, col: pos.col)) != null) ||
-          (pos.row + 1 < boardSize && board.getTileAt(Position(row: pos.row + 1, col: pos.col)) != null);
-    }
   }
 }
 
