@@ -222,106 +222,109 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
           body: Stack(
             children: [
               // Background
-              GameUi(),
-              
-              // Main content - Mobile optimized layout
-              SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isPortrait = constraints.maxHeight > constraints.maxWidth;
-                    
-                    return Column(
-                      children: [
-                        // Sync widget
-                        sync,
-                        
-                        // Top Bar - 10% of screen height
-                        SizedBox(
-                          height: constraints.maxHeight * 0.07,
-                          child: Builder(builder: (context) {
-                            final g = context.watch<GameProvider>();
-                            final r = g.room;
-                            String turnLabel = 'بانتظار اللاعبين...';
-                            bool myTurn = g.isMyTurn;
-                            if (r != null && r.players.isNotEmpty) {
-                              final idx = r.currentPlayerIndex;
-                              final name = r.players[idx].nickname;
-                              turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
-                            }
-                            return Topbar(currentText: turnLabel);
-                          }),
-                        ),
-                        
-                        // Enemy UI - 12% of screen height (reduced from 15%)
-                        SizedBox(
-                          height: constraints.maxHeight * 0.17,
-                          child: Builder(builder: (context) {
-                            final room = passPlayProvider.room!;
-                            final currentPlayerId = passPlayProvider.currentPlayerId ?? room.players.first.id;
-                            final otherPlayer = room.players.firstWhere(
-                              (p) => p.id != currentPlayerId,
-                              orElse: () => room.players.last,
-                            );
-                            
-                            // Show opponent's actual rack tiles from room
-                            final opponentRack = otherPlayer.rack;
-                            
-                            return EnemyUi(
-                              name: otherPlayer.nickname,
-                              points: otherPlayer.score,
-                              image: "https://placehold.co/100x100",
-                              tiles: opponentRack,
-                            );
-                          }),
-                        ),
-                        
-                        // Game Board - 50% of screen height (main content)
-                        Expanded(
-                          flex: 6,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                            child: BoardUI(),
-                          ),
-                        ),
-                        
-                        // Player UI - 18% of screen height (reduced from 20%)
-                        SizedBox(
-                          height: constraints.maxHeight * 0.21,
-                          child: Builder(builder: (context) {
-                            final room = passPlayProvider.room!;
-                            final currentPlayerId = passPlayProvider.currentPlayerId ?? room.players.first.id;
-                            final currentPlayer = room.players.firstWhere(
-                              (p) => p.id == currentPlayerId,
-                              orElse: () => room.players.first,
-                            );
-                            
-                            // Get player's tiles from the room
-                            final playerTiles = currentPlayer.rack.isNotEmpty 
-                              ? currentPlayer.rack 
-                              : List.generate(7, (index) => 
-                                  Tile(letter: 'أ', value: 1)
-                                );
-                            
-                            return PlayerUi(
-                              name: currentPlayer.nickname,
-                              points: currentPlayer.score,
-                              image: "https://placehold.co/100x100",
-                              tiles: playerTiles,
-                            );
-                          }),
-                        ),
-                        SizedBox(height: constraints.maxHeight * 0.005),
-                        
-                        // Bottom padding for safe area
-                      ],
-                    );
-                  },
-                ),
-              ),
+              GameUi(child: _buildGameScreenContent(passPlayProvider)),
+              // Sync widget
+              sync,
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildGameScreenContent(PassPlayProvider passPlayProvider) {
+    return SafeArea(
+      
+
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isPortrait = constraints.maxHeight > constraints.maxWidth;
+          
+          return Column(
+            children: [
+              
+              // Top Bar - 10% of screen height
+              SizedBox(
+                height: constraints.maxHeight * 0.07,
+                child: Builder(builder: (context) {
+                  final g = context.watch<GameProvider>();
+                  final r = g.room;
+                  String turnLabel = 'بانتظار اللاعبين...';
+                  bool myTurn = g.isMyTurn;
+                  if (r != null && r.players.isNotEmpty) {
+                    final idx = r.currentPlayerIndex;
+                    final name = r.players[idx].nickname;
+                    turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
+                  }
+                  return Topbar(currentText: turnLabel);
+                }),
+              ),
+              
+              // Enemy UI - 12% of screen height (reduced from 15%)
+              SizedBox(
+                height: constraints.maxHeight * 0.17,
+                child: Builder(builder: (context) {
+                  final room = passPlayProvider.room!;
+                  final currentPlayerId = passPlayProvider.currentPlayerId ?? room.players.first.id;
+                  final otherPlayer = room.players.firstWhere(
+                    (p) => p.id != currentPlayerId,
+                    orElse: () => room.players.last,
+                  );
+                  
+                  // Show opponent's actual rack tiles from room
+                  final opponentRack = otherPlayer.rack;
+                  
+                  return EnemyUi(
+                    name: otherPlayer.nickname,
+                    points: otherPlayer.score,
+                    image: "https://placehold.co/100x100",
+                    tiles: opponentRack,
+                  );
+                }),
+              ),
+              
+              // Game Board - 50% of screen height (main content)
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: BoardUI(),
+                ),
+              ),
+              
+              // Player UI - 18% of screen height (reduced from 20%)
+              SizedBox(
+                height: constraints.maxHeight * 0.21,
+                child: Builder(builder: (context) {
+                  final room = passPlayProvider.room!;
+                  final currentPlayerId = passPlayProvider.currentPlayerId ?? room.players.first.id;
+                  final currentPlayer = room.players.firstWhere(
+                    (p) => p.id == currentPlayerId,
+                    orElse: () => room.players.first,
+                  );
+                  
+                  // Get player's tiles from the room
+                  final playerTiles = currentPlayer.rack.isNotEmpty 
+                    ? currentPlayer.rack 
+                    : List.generate(7, (index) => 
+                        Tile(letter: 'أ', value: 1)
+                      );
+                  
+                  return PlayerUi(
+                    name: currentPlayer.nickname,
+                    points: currentPlayer.score,
+                    image: "https://placehold.co/100x100",
+                    tiles: playerTiles,
+                  );
+                }),
+              ),
+              SizedBox(height: constraints.maxHeight * 0.005),
+              
+              // Bottom padding for safe area
+            ],
+          );
+        },
+      ),
     );
   }
 }

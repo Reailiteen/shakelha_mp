@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/widgets/tileUI.dart';
+import 'package:mp_tictactoe/provider/pass_play_provider.dart';
+import 'package:provider/provider.dart';
 
 class EnemyUi extends StatelessWidget {
   const EnemyUi({Key? key, required this.name, required this.points, required this.image, required this.tiles}) : super(key: key);
@@ -16,63 +18,93 @@ class EnemyUi extends StatelessWidget {
       padding: const EdgeInsets.all(3.0),
       child: Column(
         children: [
-          // Player info
+          // Scrabble-style top row: Opponent info (left) + My info (right)
           Expanded(
             flex: 4,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(2.0),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: const Color(0xFFC9954E),
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  // Avatar
-                  CircleAvatar(
-                    radius: screenWidth * 0.06,
-                    backgroundColor: const Color(0xFFC9954E),
-                    child: CircleAvatar(
-                      radius: screenWidth * 0.055,
-                      backgroundImage: NetworkImage(image),
-                      backgroundColor: Colors.grey[300],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Name and points
-                  Expanded(
-                    child: Column(
+            child: Builder(builder: (context) {
+              final prov = context.read<PassPlayProvider?>();
+              final my = prov?.currentPlayer;
+              final myName = my?.nickname ?? '—';
+              final myPoints = my?.score ?? 0;
+
+              Widget buildHeaderCard({
+                required bool avatarOnLeft,
+                required String displayName,
+                required int displayPoints,
+                required String avatar,
+              }) {
+                return LayoutBuilder(
+                  builder: (context, c) {
+                    final h = c.maxHeight;
+                    final nameSize = (h * 0.42).clamp(10.0, 22.0);
+                    final pointsSize = (h * 0.32).clamp(8.0, 18.0);
+
+                    Widget avatarWidget (double height)=>CircleAvatar(
+                      radius: height * 0.5,
+                      backgroundColor: const Color(0xFFC9954E).withOpacity(0.9),
+                      child: CircleAvatar(
+                        radius: height * 0.45,
+                        backgroundImage: NetworkImage(avatar),
+                        backgroundColor: Colors.grey[300],
+                      ),
+                    );
+
+                    Widget textBlock(bool flipx) => Transform.flip(flipX: flipx, child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          name,
+                          displayName,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: screenWidth * 0.045,
-                            fontFamily: 'Jomhuria',
+                            fontSize: nameSize,
                             fontWeight: FontWeight.w800,
                           ),
                           overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                         Text(
-                          'نقاط : $points',
+                          'نقاط : $displayPoints',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: screenWidth * 0.035,
-                            fontFamily: 'Jomhuria',
-                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            fontSize: pointsSize,
+                            fontWeight: FontWeight.w700,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ],
-                    ),
-                  ),
+                    ));
+
+                    return Transform.flip(flipX: !avatarOnLeft, child: Stack(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                        borderRadius: BorderRadius.only(topLeft: Radius.circular(22), bottomLeft: Radius.circular(22)),
+                        border: Border.all(color: const Color(0xFFC9954E), width: 3),
+                      ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: avatarWidget(h),
+                      ),
+                    ])
+                    );
+                  },
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: buildHeaderCard(avatarOnLeft: false, displayName: name, displayPoints: points, avatar: image)),
+                  const SizedBox(width: 6),
+                  Expanded(child: buildHeaderCard(avatarOnLeft: true, displayName: myName, displayPoints: myPoints, avatar: 'https://placehold.co/100x100')),
                 ],
-              ),
-            ),
+              );
+            }),
           ),
           
           const SizedBox(height: 4),
@@ -82,7 +114,7 @@ class EnemyUi extends StatelessWidget {
             flex: 4,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(4.0),
+              padding: const EdgeInsets.all(2.0),
               decoration: BoxDecoration(
                 color: const Color(0xFFA46D41),
                 borderRadius: BorderRadius.circular(12),

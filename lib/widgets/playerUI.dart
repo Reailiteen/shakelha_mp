@@ -461,71 +461,11 @@ class PlayerUi extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Player info and controls row
+          // Controls row only (player info removed; now lives in EnemyUi header row)
           Expanded(
             flex: 10,
             child: Row(
               children: [
-                // Player avatar and info
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    padding: const EdgeInsets.all(2.0),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: const Color(0xFFC9954E),
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        // Avatar
-                        CircleAvatar(
-                          radius: screenWidth * 0.06,
-                          backgroundColor: const Color(0xFFC9954E),
-                          child: CircleAvatar(
-                            radius: screenWidth * 0.055,
-                            backgroundImage: NetworkImage(image),
-                            backgroundColor: Colors.grey[300],
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Name and points
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: screenWidth * 0.05,
-                                  fontFamily: 'Jomhuria',
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                'نقاط: $points',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: screenWidth * 0.035,
-                                  fontFamily: 'Jomhuria',
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(width: 4),
-                
                 // Action buttons
                 Expanded(
                   flex: 2,
@@ -565,7 +505,7 @@ class PlayerUi extends StatelessWidget {
                               // No-op hint UI. Logic to be added later.
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF137F83),
+                              backgroundColor: const Color.fromARGB(255, 127, 141, 25),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
