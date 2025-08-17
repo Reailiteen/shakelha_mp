@@ -50,12 +50,11 @@ class EnemyUi extends StatelessWidget {
                       ),
                     );
 
-                    Widget textBlock(bool flipx) => Transform.flip(flipX: !flipx, child: Column(
-
-                      spacing: -screenWidth * 0.05,
+                    Widget textBlock(bool flipx) => Transform.flip(flipX: !flipx, child: Stack(
                       children: [
-                        Text(
+                        Positioned(top: 0, left: 0, right: 0, bottom: 20, child: Text(
                           displayName,
+
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -66,8 +65,8 @@ class EnemyUi extends StatelessWidget {
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
-                        ),
-                        Text(
+                        )),
+                        Positioned(top: 26, left: !flipx ? 0 : 40 , right: !flipx ? 40 : 0, bottom: 0, child: Text(
                           'نقاط : $displayPoints',
                           textAlign: TextAlign.center,
                           style: TextStyle(
@@ -78,7 +77,7 @@ class EnemyUi extends StatelessWidget {
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
-                        ),
+                        )),
                       ],
                     ));
 
