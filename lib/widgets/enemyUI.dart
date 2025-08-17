@@ -3,6 +3,7 @@ import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/widgets/tileUI.dart';
 import 'package:mp_tictactoe/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class EnemyUi extends StatelessWidget {
   const EnemyUi({Key? key, required this.name, required this.points, required this.image, required this.tiles}) : super(key: key);
@@ -49,17 +50,19 @@ class EnemyUi extends StatelessWidget {
                       ),
                     );
 
-                    Widget textBlock(bool flipx) => Transform.flip(flipX: flipx, child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                    Widget textBlock(bool flipx) => Transform.flip(flipX: !flipx, child: Column(
+
+                      spacing: -screenWidth * 0.05,
                       children: [
                         Text(
                           displayName,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: nameSize,
-                            fontWeight: FontWeight.w800,
+                            fontSize: nameSize*1.2,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: GoogleFonts.jomhuria().fontFamily,
+                            letterSpacing: screenWidth * 0.001,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -70,7 +73,8 @@ class EnemyUi extends StatelessWidget {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: pointsSize,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w400,
+                            fontFamily: GoogleFonts.jomhuria().fontFamily,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -82,16 +86,18 @@ class EnemyUi extends StatelessWidget {
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                        borderRadius: BorderRadius.only(topLeft: Radius.circular(22), bottomLeft: Radius.circular(22)),
-                        border: Border.all(color: const Color(0xFFC9954E), width: 3),
-                      ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        child: avatarWidget(h),
-                      ),
-                    ])
+                          borderRadius: BorderRadius.only(topLeft: Radius.circular(24), bottomLeft: Radius.circular(24)),
+                            border: Border.all(color: const Color(0xFFC9954E), width: 3),
+                          ),
+                          child: Padding(padding: EdgeInsets.only(left: screenWidth * 0.02,bottom: h * 0.05), child: Center(child: textBlock(avatarOnLeft))),
+                        ),
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          child: avatarWidget(h),
+                        ),
+                        ]
+                      )
                     );
                   },
                 );
@@ -100,7 +106,7 @@ class EnemyUi extends StatelessWidget {
               return Row(
                 children: [
                   Expanded(child: buildHeaderCard(avatarOnLeft: false, displayName: name, displayPoints: points, avatar: image)),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 10),
                   Expanded(child: buildHeaderCard(avatarOnLeft: true, displayName: myName, displayPoints: myPoints, avatar: 'https://placehold.co/100x100')),
                 ],
               );
