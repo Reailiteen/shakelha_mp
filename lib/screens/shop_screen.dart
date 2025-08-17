@@ -32,90 +32,67 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        );
-    final descStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Colors.white70,
-        );
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('المتجر'),
-        backgroundColor: const Color(0xFF0E2235),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF0E2235), Color(0xFF126E73)],
-          ),
-        ),
-        child: SlideTransition(
-          position: _slideAnim,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-            children: [
-              _category(
-                context,
-                icon: Icons.auto_fix_high,
-                title: 'متجر القدرات',
-                description: 'اشترِ قدرات خاصة لتعزيز أسلوب لعبك',
-                color: const Color(0xFF26A69A),
-                items: [
-                  _item(context, 'قوة الكلمات', 'مضاعف نقاط +50%', '100', Icons.monetization_on),
-                  _item(context, 'رؤية المساعد', 'اكتشف أفضل كلمة ممكنة', '150', Icons.monetization_on),
-                  _item(context, 'تبديل الأحرف', 'استبدال حرفين مجاناً', '75', Icons.monetization_on),
-                  _item(context, 'وقت إضافي', '+30 ثانية لكل جولة', '50', Icons.monetization_on),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _category(
-                context,
-                icon: Icons.pets,
-                title: 'معرض التمائم',
-                description: 'اجمع تمائم جميلة تمثل ثقافة الخليج',
-                color: const Color(0xFFFFD54F),
-                items: [
-                  _item(context, 'صقر الصحراء', 'تميمة نادرة من التراث العربي', '25', Icons.diamond),
-                  _item(context, 'جمل البدو', 'رفيق الرحلات الصحراوية', '30', Icons.diamond),
-                  _item(context, 'لؤلؤة الخليج', 'كنز من أعماق البحار', '40', Icons.diamond),
-                  _item(context, 'نخلة الواحة', 'رمز الحياة في الصحراء', '20', Icons.diamond),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _category(
-                context,
-                icon: Icons.palette,
-                title: 'الديكورات والثيمات',
-                description: 'خصص مظهر اللعبة بألوان وديكورات خليجية',
-                color: const Color(0xFF8D6E63),
-                items: [
-                  _item(context, 'ثيم القصر الذهبي', 'لوحة ألوان فاخرة ذهبية', '200', Icons.monetization_on),
-                  _item(context, 'ثيم البحر الفيروزي', 'ألوان البحر الخليجي', '150', Icons.monetization_on),
-                  _item(context, 'ثيم الصحراء', 'ألوان الغروب الصحراوي', '175', Icons.monetization_on),
-                  _item(context, 'إطار اللؤلؤ', 'إطار لوحة مرصع باللؤلؤ', '100', Icons.monetization_on),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _category(
-                context,
-                icon: Icons.account_balance_wallet,
-                title: 'حزم العملات',
-                description: 'احصل على المزيد من الذهب والجواهر',
-                color: const Color(0xFF19B6A6),
-                items: [
-                  _item(context, 'حزمة المبتدئ', '1,000 ذهب + 10 جواهر', '0.99', Icons.attach_money),
-                  _item(context, 'حزمة المتقدم', '5,000 ذهب + 50 جواهر', '4.99', Icons.attach_money),
-                  _item(context, 'حزمة الخبير', '15,000 ذهب + 150 جواهر', '12.99', Icons.attach_money),
-                  _item(context, 'حزمة الأسطورة', '50,000 ذهب + 500 جواهر', '29.99', Icons.attach_money),
-                ],
-              ),
+    return SlideTransition(
+      position: _slideAnim,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+        children: [
+          _category(
+            context,
+            icon: Icons.auto_fix_high,
+            title: 'متجر القدرات',
+            description: 'اشترِ قدرات خاصة لتعزيز أسلوب لعبك',
+            color: const Color(0xFF26A69A),
+            items: [
+              _item(context, 'قوة الكلمات', 'مضاعف نقاط +50%', '100', Icons.monetization_on),
+              _item(context, 'رؤية المساعد', 'اكتشف أفضل كلمة ممكنة', '150', Icons.monetization_on),
+              _item(context, 'تبديل الأحرف', 'استبدال حرفين مجاناً', '75', Icons.monetization_on),
+              _item(context, 'وقت إضافي', '+30 ثانية لكل جولة', '50', Icons.monetization_on),
             ],
           ),
-        ),
+          const SizedBox(height: 18),
+          _category(
+            context,
+            icon: Icons.pets,
+            title: 'معرض التمائم',
+            description: 'اجمع تمائم جميلة تمثل ثقافة الخليج',
+            color: const Color(0xFFFFD54F),
+            items: [
+              _item(context, 'صقر الصحراء', 'تميمة نادرة من التراث العربي', '25', Icons.diamond),
+              _item(context, 'جمل البدو', 'رفيق الرحلات الصحراوية', '30', Icons.diamond),
+              _item(context, 'لؤلؤة الخليج', 'كنز من أعماق البحار', '40', Icons.diamond),
+              _item(context, 'نخلة الواحة', 'رمز الحياة في الصحراء', '20', Icons.diamond),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _category(
+            context,
+            icon: Icons.palette,
+            title: 'الديكورات والثيمات',
+            description: 'خصص مظهر اللعبة بألوان وديكورات خليجية',
+            color: const Color(0xFF8D6E63),
+            items: [
+              _item(context, 'ثيم القصر الذهبي', 'لوحة ألوان فاخرة ذهبية', '200', Icons.monetization_on),
+              _item(context, 'ثيم البحر الفيروزي', 'ألوان البحر الخليجي', '150', Icons.monetization_on),
+              _item(context, 'ثيم الصحراء', 'ألوان الغروب الصحراوي', '175', Icons.monetization_on),
+              _item(context, 'إطار اللؤلؤ', 'إطار لوحة مرصع باللؤلؤ', '100', Icons.monetization_on),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _category(
+            context,
+            icon: Icons.account_balance_wallet,
+            title: 'حزم العملات',
+            description: 'احصل على المزيد من الذهب والجواهر',
+            color: const Color(0xFF19B6A6),
+            items: [
+              _item(context, 'حزمة المبتدئ', '1,000 ذهب + 10 جواهر', '0.99', Icons.attach_money),
+              _item(context, 'حزمة المتقدم', '5,000 ذهب + 50 جواهر', '4.99', Icons.attach_money),
+              _item(context, 'حزمة الخبير', '15,000 ذهب + 150 جواهر', '12.99', Icons.attach_money),
+              _item(context, 'حزمة الأسطورة', '50,000 ذهب + 500 جواهر', '29.99', Icons.attach_money),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -142,6 +119,14 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 8,
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,6 +138,13 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.4),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
                 child: Icon(icon, color: color, size: 22),
               ),
@@ -184,6 +176,14 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
         color: Colors.white.withOpacity(0.04),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF19B6A6).withOpacity(0.2),
+            blurRadius: 4,
+            spreadRadius: 0.5,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -215,6 +215,14 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 color: const Color(0xFF19B6A6),
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF19B6A6).withOpacity(0.6),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -239,16 +247,37 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('تأكيد الشراء', style: Theme.of(context).textTheme.titleLarge),
-        content: Text('هل تريد شراء "$item" مقابل $price؟', textAlign: TextAlign.center),
+        backgroundColor: const Color(0xFF2B4E6E),
+        title: Text('تأكيد الشراء', 
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+        ),
+        content: Text('هل تريد شراء "$item" مقابل $price؟', 
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showPurchaseSuccessDialog(item);
-            },
-            child: const Text('شراء'),
+            onPressed: () => Navigator.pop(context), 
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white70)),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF19B6A6).withOpacity(0.4),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showPurchaseSuccessDialog(item);
+              },
+              child: const Text('شراء', style: TextStyle(color: Color(0xFF19B6A6))),
+            ),
           ),
         ],
       ),
@@ -260,17 +289,48 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: const Color(0xFF2B4E6E),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 28),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.4),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.check_circle, color: Colors.green, size: 28),
+            ),
             const SizedBox(width: 8),
-            const Text('تم الشراء!'),
+            const Text('تم الشراء!', style: TextStyle(color: Colors.white)),
           ],
         ),
-        content: Text('تم شراء "$item" بنجاح! يمكنك الآن استخدامه في اللعبة.', textAlign: TextAlign.center),
+        content: Text('تم شراء "$item" بنجاح! يمكنك الآن استخدامه في اللعبة.', 
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('رائع!')),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF19B6A6).withOpacity(0.4),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: TextButton(
+              onPressed: () => Navigator.pop(context), 
+              child: const Text('رائع!', style: TextStyle(color: Color(0xFF19B6A6))),
+            ),
+          ),
         ],
       ),
     );

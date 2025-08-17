@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/screens/home_shell.dart';
+import 'package:mp_tictactoe/widgets/gameBG.dart';
 
 class SplashScreen extends StatefulWidget {
   static const routeName = '/splash';
@@ -50,95 +51,84 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final colors = [
-      const Color(0xFF0E2235),
-      const Color(0xFF126E73),
-      const Color(0xFF19B6A6),
-    ];
-
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: colors,
-            stops: const [0, 0.6, 1],
-          ),
-        ),
-        child: SafeArea(
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_fade, _scale]),
-            builder: (context, child) {
-              return Opacity(
-                opacity: _fade.value,
-                child: Transform.scale(
-                  scale: _scale.value,
-                  child: Column(
-                    children: [
-                      const Spacer(flex: 2),
-                      Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            Text(
-                              'شكّلها',
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    shadows: const [
-                                      Shadow(offset: Offset(2, 2), blurRadius: 4, color: Colors.black26),
-                                    ],
-                                  ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Shakelha',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    color: Colors.white70,
-                                    letterSpacing: 2,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        height: 180,
-                        margin: const EdgeInsets.symmetric(horizontal: 32),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: Colors.white.withOpacity(0.08),
-                          border: Border.all(color: Colors.white30, width: 2),
-                        ),
-                        child: const Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      body: Stack(
+        children: [
+          const GameUi(),
+          SafeArea(
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_fade, _scale]),
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _fade.value,
+                  child: Transform.scale(
+                    scale: _scale.value,
+                    child: Column(
+                      children: [
+                        const Spacer(flex: 2),
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
                             children: [
-                              _MascotIcon(icon: '📜', label: 'حرف'),
-                              _MascotIcon(icon: '☕', label: 'قهوة'),
-                              _MascotIcon(icon: '🌴', label: 'نخلة'),
+                              Text(
+                                'شكّلها',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      shadows: const [
+                                        Shadow(offset: Offset(2, 2), blurRadius: 4, color: Colors.black26),
+                                      ],
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Shakelha',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                      color: Colors.white70,
+                                      letterSpacing: 2,
+                                    ),
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                      const Spacer(),
-                      const Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          strokeWidth: 3,
+                        const Spacer(),
+                        Container(
+                          height: 180,
+                          margin: const EdgeInsets.symmetric(horizontal: 32),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.white.withOpacity(0.08),
+                            border: Border.all(color: Colors.white30, width: 2),
+                          ),
+                          child: const Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _MascotIcon(icon: '📜', label: 'حرف'),
+                                _MascotIcon(icon: '☕', label: 'قهوة'),
+                                _MascotIcon(icon: '🌴', label: 'نخلة'),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      const Spacer(flex: 2),
-                    ],
+                        const Spacer(),
+                        const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const Spacer(flex: 2),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

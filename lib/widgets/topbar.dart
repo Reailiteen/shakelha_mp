@@ -4,9 +4,26 @@ import 'package:google_fonts/google_fonts.dart';
 class Topbar extends StatelessWidget {
   const Topbar({Key? key, required this.currentText}) : super(key: key);
   final String currentText;
+  
+  /// Returns true if the back button should be hidden
+  bool _shouldHideBackButton(BuildContext context) {
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+    if (currentRoute == null) return false;
+    
+    // Hide back button for screens where going back leads to nowhere
+    final noBackScreens = [
+      '/home',           // HomeShell (main menu/shop)
+      '/main-menu',      // MainMenuScreen
+      '/splash',         // SplashScreen
+    ];
+    
+    return noBackScreens.contains(currentRoute);
+  }
+  
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final hideBackButton = _shouldHideBackButton(context);
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
@@ -32,6 +49,12 @@ class Topbar extends StatelessWidget {
               color: Colors.black.withOpacity(0.3),
               blurRadius: 4,
               offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: const Color(0xFFB16F15).withOpacity(0.4),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 0),
             ),
           ],
         ),
@@ -62,6 +85,11 @@ class Topbar extends StatelessWidget {
                               blurRadius: 1,
                               offset: const Offset(0, 1),
                             ),
+                            BoxShadow(
+                              color: const Color(0xFFFAE3C5).withOpacity(0.6),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
                           ],
                         ),
                       )),
@@ -80,16 +108,27 @@ class Topbar extends StatelessWidget {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: Center(
-                      child: Text(
-                        currentText,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.jomhuria(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w400,
-                          fontSize: fontSize,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.2),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                        child: Text(
+                          currentText,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.jomhuria(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w400,
+                            fontSize: fontSize,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
                     ),
                   );
@@ -97,19 +136,36 @@ class Topbar extends StatelessWidget {
               ),
             ),
             
-            // Arrow button (right)
-            SizedBox(
-              width: screenWidth * 0.15,
-              height: double.infinity,
-              child: Center(
-                child: FittedBox(
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_forward, color: Color(0xFFFAE3C5)),
-                    onPressed: () => Navigator.pop(context),
+            // Arrow button (right) - conditionally shown
+            if (!hideBackButton)
+              SizedBox(
+                width: screenWidth * 0.15,
+                height: double.infinity,
+                child: Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFAE3C5).withOpacity(0.4),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: FittedBox(
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_forward, color: Color(0xFFFAE3C5)),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            
+            // Empty space when back button is hidden to maintain layout
+            if (hideBackButton)
+              SizedBox(width: screenWidth * 0.15),
           ],
         ),
       ),

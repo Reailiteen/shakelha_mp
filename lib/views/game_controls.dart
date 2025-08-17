@@ -18,7 +18,7 @@ class GameControls extends StatelessWidget {
           Row(
             spacing: 6,
             children: [
-                ElevatedButton.icon(
+                _GlowingButton(
                   onPressed: game.isMyTurn
                       ? () {
                           if (game.isPlacingTiles) {
@@ -30,17 +30,10 @@ class GameControls extends StatelessWidget {
                       : null,
                   icon: Icon(game.isPlacingTiles ? Icons.close : Icons.play_arrow, size: 18),
                   label: Text(game.isPlacingTiles ? 'Finish' : 'Place'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  backgroundColor: Colors.teal,
+                  glowColor: Colors.teal,
                 ),
-                ElevatedButton.icon(
+                _GlowingButton(
                   onPressed: game.canSubmitMove()
                       ? () {
                           final ok = game.submitMove();
@@ -54,31 +47,17 @@ class GameControls extends StatelessWidget {
                       : null,
                   icon: const Icon(Icons.check, size: 18),
                   label: const Text('Submit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  backgroundColor: Colors.green,
+                  glowColor: Colors.green,
                 ),
-                ElevatedButton.icon(
+                _GlowingButton(
                   onPressed: game.hasPendingPlacements() ? () => game.cancelMove() : null,
                   icon: const Icon(Icons.undo, size: 18),
                   label: const Text('Cancel'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  backgroundColor: Colors.orange,
+                  glowColor: Colors.orange,
                 ),
-                ElevatedButton.icon(
+                _GlowingButton(
                   onPressed: game.isMyTurn
                       ? () {
                           game.passTurn();
@@ -92,29 +71,15 @@ class GameControls extends StatelessWidget {
                       : null,
                   icon: const Icon(Icons.skip_next, size: 18),
                   label: const Text('Pass'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  backgroundColor: Colors.blue,
+                  glowColor: Colors.blue,
                 ),
-                ElevatedButton.icon(
+                _GlowingButton(
                   onPressed: game.canExchangeTiles() ? () => _showExchangeDialog(context, game) : null,
                   icon: const Icon(Icons.swap_horiz, size: 18),
                   label: const Text('Swap'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    minimumSize: const Size(0, 34),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  backgroundColor: Colors.purple,
+                  glowColor: Colors.purple,
                 ),
             ],
           ),
@@ -127,21 +92,87 @@ class GameControls extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exchange Tiles'),
-        content: const Text('Select tiles from your rack to exchange, then tap Exchange.'),
+        backgroundColor: const Color(0xFF2B4E6E),
+        title: const Text('Exchange Tiles', style: TextStyle(color: Colors.white)),
+        content: const Text('Select tiles from your rack to exchange, then tap Exchange.', 
+          style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
-          TextButton(
-            onPressed: () {
-              game.exchangeSelectedTiles();
-              Navigator.pop(context);
-            },
-            child: const Text('Exchange'),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF19B6A6).withOpacity(0.4),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: TextButton(
+              onPressed: () {
+                game.exchangeSelectedTiles();
+                Navigator.pop(context);
+              },
+              child: const Text('Exchange', style: TextStyle(color: Color(0xFF19B6A6))),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GlowingButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final Widget label;
+  final Color backgroundColor;
+  final Color glowColor;
+
+  const _GlowingButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.backgroundColor,
+    required this.glowColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: glowColor.withOpacity(0.4),
+            blurRadius: 8,
+            spreadRadius: 1,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: label,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          minimumSize: const Size(0, 34),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+          textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          elevation: 0,
+          side: BorderSide(
+            color: glowColor.withOpacity(0.6),
+            width: 1,
+          ),
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:mp_tictactoe/responsive/responsive.dart';
 import 'package:mp_tictactoe/widgets/custom_button.dart';
 import 'package:mp_tictactoe/widgets/custom_text.dart';
 import 'package:mp_tictactoe/widgets/custom_textfield.dart';
+import 'package:mp_tictactoe/widgets/game_page.dart';
 
 class JoinRoomScreen extends StatefulWidget {
   static String routeName = '/join-room';
@@ -58,22 +59,9 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('الانضمام إلى غرفة'),
-        actions: [
-          IconButton(
-            tooltip: 'تحديث',
-            onPressed: _fetchRooms,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Icon(Icons.arrow_back),
-      ),
-      body: Responsive(
+    return GamePageShell(
+      title: 'الانضمام إلى غرفة',
+      child: Responsive(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/screens/main_menu_screen.dart';
 import 'package:mp_tictactoe/screens/shop_screen.dart';
+import 'package:mp_tictactoe/widgets/game_page.dart';
 
 /// HomeShell provides the main RTL navigation between Shop (left)
 /// and Game menu (right, default).
@@ -40,60 +41,52 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final isGame = _current == 1;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(isGame ? 'اللعبة' : 'المتجر'),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top segmented control
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _SegmentButton(
-                          selected: !isGame,
-                          label: 'المتجر',
-                          onTap: () => _go(0),
-                        ),
-                      ),
-                      Expanded(
-                        child: _SegmentButton(
-                          selected: isGame,
-                          label: 'اللعبة',
-                          onTap: () => _go(1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+    return GamePageShell(
+      title: isGame ? 'اللعبة' : 'المتجر',
+      child: Column(
+        children: [
+          // Top segmented control
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24),
               ),
-              const SizedBox(height: 8),
-              // Pages: 0 Shop, 1 Game Menu
-              Expanded(
-                child: PageView(
-                  controller: _controller,
-                  onPageChanged: (i) => setState(() => _current = i),
-                  children: const [
-                    ShopScreen(),
-                    MainMenuScreen(),
-                  ],
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _SegmentButton(
+                      selected: !isGame,
+                      label: 'المتجر',
+                      onTap: () => _go(0),
+                    ),
+                  ),
+                  Expanded(
+                    child: _SegmentButton(
+                      selected: isGame,
+                      label: 'اللعبة',
+                      onTap: () => _go(1),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          // Pages: 0 Shop, 1 Game Menu
+          Expanded(
+            child: PageView(
+              controller: _controller,
+              onPageChanged: (i) => setState(() => _current = i),
+              children: const [
+                ShopScreen(),
+                MainMenuScreen(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
