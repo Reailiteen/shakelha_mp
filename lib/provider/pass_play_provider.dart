@@ -432,10 +432,21 @@ class PassPlayProvider extends ChangeNotifier {
     tempBoard.isFirstTurn = originalBoard.isFirstTurn;
     final newlyPlaced = _pendingPlacements.map((pt) => pt.tile.copyWith(position: pt.position)).toList();
     final (ok, msg, points, words) = tempBoard.validateAndScoreMove(newlyPlaced);
+    
+    // Debug logging for score calculation
+    print('[PassPlayProvider] Move validation: ok=$ok, msg="$msg", points=$points, words=$words');
+    print('[PassPlayProvider] Newly placed tiles: ${newlyPlaced.map((t) => '${t.letter}@${t.position}').join(', ')}');
+    print('[PassPlayProvider] Board isFirstTurn: ${tempBoard.isFirstTurn}');
+    print('[PassPlayProvider] Original board isFirstTurn: ${originalBoard.isFirstTurn}');
+    
     if (!ok) {
       _setErrorMessage(msg);
       return false;
     }
+    
+    // Additional debugging for points
+    print('[PassPlayProvider] Points calculated: $points');
+    print('[PassPlayProvider] Words formed: $words');
 
     // Commit tiles to the real board
     var committedBoard = _room!.board;
@@ -448,14 +459,22 @@ class PassPlayProvider extends ChangeNotifier {
     // Update score and refill up to 7 tiles
     final playerIdx = _room!.players.indexWhere((p) => p.id == _currentPlayerId);
     var players = List<Player>.from(_room!.players);
+    final beforeScore = players[playerIdx].score;
     final afterScore = players[playerIdx].copyWith(score: players[playerIdx].score + points);
     players[playerIdx] = afterScore;
+    
+    // Debug logging for score update
+    print('[PassPlayProvider] Player ${players[playerIdx].nickname}: score $beforeScore + $points = ${afterScore.score}');
+    print('[PassPlayProvider] Player index: $playerIdx');
+    print('[PassPlayProvider] Current player ID: $_currentPlayerId');
+    print('[PassPlayProvider] All players: ${players.map((p) => '${p.nickname}: ${p.score}').join(', ')}');
 
     // Refill to 7 tiles
     final need = (7 - afterScore.rack.length).clamp(0, 7);
     if (need > 0) {
       final drawn = _room!.letterDistribution.drawTiles(need, ownerId: _currentPlayerId);
       players[playerIdx] = players[playerIdx].copyWith(rack: [...afterScore.rack, ...drawn]);
+      print('[PassPlayProvider] Drew $need new tiles, rack now has ${players[playerIdx].rack.length} tiles');
     }
 
     final move = Move(
@@ -475,6 +494,12 @@ class PassPlayProvider extends ChangeNotifier {
       updatedAt: DateTime.now(),
     ).switchToNextPlayer();
 
+    // Debug logging for final state
+    print('[PassPlayProvider] Final room state:');
+    print('[PassPlayProvider]   Current player: ${_room!.currentPlayerId}');
+    print('[PassPlayProvider]   Player scores: ${_room!.players.map((p) => '${p.nickname}: ${p.score}').join(', ')}');
+    print('[PassPlayProvider]   Move history: ${_room!.moveHistory.length} moves');
+
     // UI state
     _lastSubmittedWords = move.wordsFormed;
     _isPlacingTiles = false;
@@ -482,6 +507,11 @@ class PassPlayProvider extends ChangeNotifier {
     _selectedTiles.clear();
     _setSuccessMessage('تم تسجيل الحركة: +$points');
     _currentPlayerId = _room!.currentPlayerId ?? _room!.players[_room!.currentPlayerIndex].id;
+    
+    // Ensure UI is notified of changes
+    notifyListeners();
+    print('[PassPlayProvider] Notified listeners of score update');
+    
     return true;
   }
   

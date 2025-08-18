@@ -90,11 +90,16 @@ class Board {
       return MapEntry(pos, multiplier);
     });
 
-    return Board(
+    final board = Board(
       size: json['size'] ?? 15,
       grid: grid,
       cellMultipliers: multipliers,
     );
+    
+    // Preserve the isFirstTurn flag from the original board
+    board.isFirstTurn = json['isFirstTurn'] ?? true;
+    
+    return board;
   }
 
   /// Converts the board to a JSON map
@@ -106,6 +111,7 @@ class Board {
         '${pos.row},${pos.col}',
         mult.toJson(),
       )),
+      'isFirstTurn': isFirstTurn,
     };
   }
   
@@ -116,69 +122,111 @@ class Board {
   }
   
   bool isValidFirstTurn(List<Tile> newlyPlacedTiles){
-    if (newlyPlacedTiles.isEmpty ) return false;
+    print('[Board] isValidFirstTurn called with ${newlyPlacedTiles.length} tiles');
+    if (newlyPlacedTiles.isEmpty ) {
+      print('[Board] First turn validation failed: no tiles');
+      return false;
+    }
 
-  // Step 1: Ensure all tiles are in same row or column
+    // Step 1: Ensure all tiles are in same row or column
     final positions = newlyPlacedTiles.map((t) => t.position!).toList();
     bool isRow = positions.first.row == positions.last.row;
     bool isCol = positions.first.col == positions.last.col;
-    if (!isRow && !isCol) return false;
+    print('[Board] First turn: isRow=$isRow, isCol=$isCol');
+    if (!isRow && !isCol) {
+      print('[Board] First turn validation failed: tiles not in straight line');
+      return false;
+    }
 
     // Must cover center cell on first move
     final center = centerPosition;
     final coversCenter = positions.any((p) => p == center);
-    if (!coversCenter) return false;
+    print('[Board] First turn: center=$center, coversCenter=$coversCenter');
+    if (!coversCenter) {
+      print('[Board] First turn validation failed: does not cover center');
+      return false;
+    }
 
     // Step 3: Collect main word (we ignore points and dictionary here)
-    final _ = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+    final (word, _) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+    print('[Board] First turn: main word formed: "$word"');
 
-    isFirstTurn = false;
+    // Don't modify state during validation
+    // isFirstTurn = false; // This was wrong - validation shouldn't modify state
 
+    print('[Board] First turn validation successful');
     return true;
   }
   (bool, int) isValidSubmission(List<Tile> newlyPlacedTiles) {
 
     if (isFirstTurn) {
-      return (isValidFirstTurn(newlyPlacedTiles), 0);
+      print('[Board] First turn validation for tiles: ${newlyPlacedTiles.map((t) => '${t.letter}@${t.position}').join(', ')}');
+      final isValid = isValidFirstTurn(newlyPlacedTiles);
+      print('[Board] First turn validation result: $isValid');
+      if (!isValid) return (false, 0);
+      
+      // For first turn, calculate points normally
+      final positions = newlyPlacedTiles.map((t) => t.position!).toList();
+      bool isRow = positions.first.row == positions.last.row;
+      
+      int collectedPoints = 0;
+      // Collect main word points
+      final (mainWord, mainPoints) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+      collectedPoints = mainPoints;
+      print('[Board] First turn main word: "$mainWord" = $mainPoints points');
+
+      // Check perpendicular words from each new tile
+      for (final tile in newlyPlacedTiles) {
+        final (crossWord, crossPoints) = buildWordFrom(tile.position!, !isRow);
+        if (crossWord.length > 1) {
+          print('[Board] First turn cross word: "$crossWord" = $crossPoints points');
+          collectedPoints += crossPoints;
+        }
+      }
+      
+      print('[Board] First turn total points: $collectedPoints');
+      return (true, collectedPoints);
     }
-  if (newlyPlacedTiles.isEmpty ) return (false, 0);
+    
+    if (newlyPlacedTiles.isEmpty ) return (false, 0);
 
-  // Step 1: Ensure all tiles are in same row or column
-  final positions = newlyPlacedTiles.map((t) => t.position!).toList();
-  bool isRow = positions.first.row == positions.last.row;
-  bool isCol = positions.first.col == positions.last.col;
-  if (!isRow && !isCol) return (false, 0);
+    // Step 1: Ensure all tiles are in same row or column
+    final positions = newlyPlacedTiles.map((t) => t.position!).toList();
+    bool isRow = positions.first.row == positions.last.row;
+    bool isCol = positions.first.col == positions.last.col;
+    if (!isRow && !isCol) return (false, 0);
 
-  // Step 2: Ensure at least one adjacent tile exists (connects to board)
-  bool isConnected = false;
-  for (final tile in newlyPlacedTiles) {
-    for (final neighborPos in getAdjacentPositions(tile.position!)) {
-      final neighbor = getTileAt(neighborPos);
-      if (neighbor != null && !newlyPlacedTiles.contains(neighbor)) {
-        isConnected = true;
-        break;
+    // Step 2: Ensure at least one adjacent tile exists (connects to board)
+    bool isConnected = false;
+    for (final tile in newlyPlacedTiles) {
+      for (final neighborPos in getAdjacentPositions(tile.position!)) {
+        final neighbor = getTileAt(neighborPos);
+        if (neighbor != null && !newlyPlacedTiles.contains(neighbor)) {
+          isConnected = true;
+          break;
+        }
       }
     }
-  }
-  if (!isConnected) return (false, 0);
-  int collectedPoints;
-  // Step 3: Collect main word (ignore actual string here)
-  collectedPoints = buildWordFrom(newlyPlacedTiles.first.position!, isRow).$2;
+    if (!isConnected) return (false, 0);
+    
+    int collectedPoints;
+    // Step 3: Collect main word (ignore actual string here)
+    collectedPoints = buildWordFrom(newlyPlacedTiles.first.position!, isRow).$2;
 
-  // Step 4: Check perpendicular words from each new tile
-  for (final tile in newlyPlacedTiles) {
-    final pair = buildWordFrom(tile.position!, !isRow);
-    collectedPoints += pair.$2;
-  }
+    // Step 4: Check perpendicular words from each new tile
+    for (final tile in newlyPlacedTiles) {
+      final pair = buildWordFrom(tile.position!, !isRow);
+      collectedPoints += pair.$2;
+    }
 
-  return (true, collectedPoints);
-}
+    return (true, collectedPoints);
+  }
 
   /// Validates a move and the words formed using in-board rules and Arabic dictionary.
   /// Returns (isValid, message, points, wordsFormed)
   (bool, String, int, List<String>) validateAndScoreMove(List<Tile> newlyPlacedTiles) {
-    // Rule check
-    final (ok, pts) = isValidSubmission(newlyPlacedTiles);
+    // Rule check (without scoring - we'll do that on the temp board)
+    final (ok, _) = isValidSubmission(newlyPlacedTiles);
     if (!ok) return (false, 'الحركة غير صالحة', 0, const []);
 
     // Build words formed by overlaying tiles on a temp board
@@ -187,6 +235,32 @@ class Board {
       temp.placeTile(t, t.position!);
     }
     final words = temp._collectWordsFormed(newlyPlacedTiles);
+    
+    // Calculate points using the temporary board with tiles placed
+    int totalPoints = 0;
+    final positions = newlyPlacedTiles.map((t) => t.position!).toList();
+    bool isRow = positions.first.row == positions.last.row;
+    
+    // Main word points
+    final (mainWord, mainPoints) = temp.buildWordFrom(newlyPlacedTiles.first.position!, isRow);
+    if (mainWord.length > 1) {
+      totalPoints += mainPoints;
+      print('[Board] Main word: "$mainWord" = $mainPoints points');
+    }
+    
+    // Cross word points
+    for (final tile in newlyPlacedTiles) {
+      final (crossWord, crossPoints) = temp.buildWordFrom(tile.position!, !isRow);
+      if (crossWord.length > 1) {
+        totalPoints += crossPoints;
+        print('[Board] Cross word: "$crossWord" = $crossPoints points');
+      }
+    }
+    
+    // Debug logging for word formation and scoring
+    print('[Board] Newly placed tiles: ${newlyPlacedTiles.map((t) => '${t.letter}@${t.position}').join(', ')}');
+    print('[Board] Words formed: $words');
+    print('[Board] Total points calculated: $totalPoints');
 
     // Dictionary check
     final dict = ArabicDictionary.instance;
@@ -203,7 +277,8 @@ class Board {
       }
     }
 
-    return (true, 'صحيحة', pts, words);
+    print('[Board] Final validation result: valid=true, points=$totalPoints, words=$words');
+    return (true, 'صحيحة', totalPoints, words);
   }
 
   List<String> _collectWordsFormed(List<Tile> newlyPlacedTiles) {
@@ -212,9 +287,22 @@ class Board {
     final isRow = pos.first.row == pos.last.row;
 
     final words = <String>[];
-    final (main, _) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
-    if (main.length > 1) words.add(main);
+    
+    // For horizontal words, start from the rightmost tile for Arabic RTL
+    if (isRow) {
+      // Sort positions by column for horizontal words
+      pos.sort((a, b) => a.col.compareTo(b.col));
+      // For Arabic RTL, start from the rightmost (highest column) tile
+      final (main, _) = buildWordFrom(pos.last, isRow);
+      if (main.length > 1) words.add(main);
+    } else {
+      // For vertical words, start from the topmost tile
+      pos.sort((a, b) => a.row.compareTo(b.row));
+      final (main, _) = buildWordFrom(pos.first, isRow);
+      if (main.length > 1) words.add(main);
+    }
 
+    // Check perpendicular words from each newly placed tile
     for (final t in newlyPlacedTiles) {
       final (cross, __) = buildWordFrom(t.position!, !isRow);
       if (cross.length > 1) words.add(cross);
@@ -222,40 +310,67 @@ class Board {
     return words;
   }
 
-/// Builds a word starting from a given position in a direction.
+  /// Builds a word starting from a given position in a direction.
   (String, int) buildWordFrom(Position start, bool isRow) {
+    print('[Board] buildWordFrom called: start=${start.row},${start.col}, isRow=$isRow');
+    
     // Move backwards to find start of word
     Position p = start;
-    int collectedPoints = 0;
+    int wordMultiplier = 1;
+    List<int> letterValues = [];
+    
+    // First pass: find the actual start of the word by going backwards
+    int stepsBack = 0;
     while (true) {
       Position prev = isRow ? Position(row: p.row, col: p.col - 1) : Position(row: p.row - 1, col: p.col);
       if (getTileAt(prev) == null) break;
       p = prev;
+      stepsBack++;
     }
+    print('[Board] buildWordFrom: went back $stepsBack steps to find start at ${p.row},${p.col}');
 
-    // Move forwards collecting letters
+    // Second pass: collect letters and calculate scores from start to end
     StringBuffer buffer = StringBuffer();
+    int stepsForward = 0;
     while (true) {
       final tile = getTileAt(p);
       if (tile == null) break;
-      if(cellMultipliers.containsKey(tile.position)){
+      
+      // Get base letter value
+      int letterValue = tile.value;
+      
+      // Apply letter multipliers
+      if (cellMultipliers.containsKey(tile.position)) {
         final mult = cellMultipliers[tile.position]!;
         if (mult.isWordMultiplier) {
-          // For word multiplier, add base letter value now; word multiplier application
-          // is approximated by multiplying here (simple handling). For full accuracy,
-          // this would be applied to the total word later.
-          collectedPoints += tile.value * mult.value;
+          wordMultiplier *= mult.value;
         } else {
-          collectedPoints += tile.value * mult.value;
+          letterValue *= mult.value;
         }
-      }else{
-        collectedPoints += tile.value;
       }
+      
+      letterValues.add(letterValue);
       buffer.write(tile.letter);
+      
+      // Move forward in the word direction
       p = isRow ? Position(row: p.row, col: p.col + 1) : Position(row: p.row + 1, col: p.col);
+      stepsForward++;
     }
 
+    // Calculate total score: sum of letter values × word multiplier
+    final collectedPoints = letterValues.fold<int>(0, (sum, value) => sum + value) * wordMultiplier;
+
     String word = buffer.toString();
+    
+    // Debug logging for word building
+    if (word.length > 1) {
+      print('[Board] Built word: "$word" from ${start.row},${start.col} ${isRow ? 'horizontal' : 'vertical'}');
+      print('[Board]   Letter values: $letterValues');
+      print('[Board]   Word multiplier: $wordMultiplier');
+      print('[Board]   Final score: $collectedPoints');
+      print('[Board]   Steps: back=$stepsBack, forward=$stepsForward');
+    }
+    
     return (word, collectedPoints);
   }
 
