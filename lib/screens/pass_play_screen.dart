@@ -188,6 +188,8 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
           final msg = p.errorMessage ?? p.successMessage;
           if (msg != null && mounted) {
             final isError = p.errorMessage != null;
+            print('[PassPlayScreen] Displaying message: "$msg" (isError: $isError)');
+            print('[PassPlayScreen] Stack trace: ${StackTrace.current}');
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(

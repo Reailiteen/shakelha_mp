@@ -7,19 +7,25 @@ import 'package:provider/provider.dart';
 
 class MultiplayerPlayerUi extends StatelessWidget {
   const MultiplayerPlayerUi({
-    Key? key, 
-    required this.name, 
-    required this.points, 
-    required this.image, 
+    Key? key,
+    required this.name,
+    required this.points,
+    required this.image,
     required this.tiles,
     required this.socketMethods,
   }) : super(key: key);
-  
+
   final String name;
   final int points;
   final String image;
   final List<Tile> tiles;
   final SocketMethods socketMethods;
+  
+  /// Calculates the average size between rack tile and board tile for better drag feedback
+  static double _getDragFeedbackSize(double rackTileSize) {
+    const double boardCellSize = 28.0; // Standard board cell size (15x15 grid)
+    return (rackTileSize + boardCellSize) / 2;
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -78,12 +84,13 @@ class MultiplayerPlayerUi extends StatelessWidget {
                         child: Draggable<Tile>(
                           data: tile,
                           feedback:TileUI(
-                              width: tileSize,
-                              height: tileSize,
-                              letter: tile.letter,
-                              points: tile.value,
-                              left: 0,
-                              top: 0,
+                            // Use average size between rack tile and board tile for better visual consistency
+                            width: _getDragFeedbackSize(tileSize),
+                            height: _getDragFeedbackSize(tileSize),
+                            letter: tile.letter,
+                            points: tile.value,
+                            left: 0,
+                            top: 0,
                           ),
                           childWhenDragging: const SizedBox.shrink(),
                           onDragStarted: () {

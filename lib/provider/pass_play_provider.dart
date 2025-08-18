@@ -49,6 +49,8 @@ class PassPlayProvider extends ChangeNotifier {
   }
 
   void _setErrorMessage(String msg) {
+    print('[PassPlayProvider] Setting error message: "$msg"');
+    print('[PassPlayProvider] Stack trace: ${StackTrace.current}');
     _errorMessage = msg;
     _successMessage = null;
     notifyListeners();
@@ -212,12 +214,16 @@ class PassPlayProvider extends ChangeNotifier {
 
   /// Removes a pending placement
   void removePendingPlacement(Position position) {
+    print('[PassPlayProvider] Removing pending placement at position: $position');
     final index = _pendingPlacements.indexWhere((p) => p.position == position);
     if (index != -1) {
       final pt = _pendingPlacements.removeAt(index);
+      print('[PassPlayProvider] Removed tile: "${pt.tile.letter}" from position: $position');
       // Return tile to rack
       _returnToCurrentPlayerRack(pt.tile);
       notifyListeners();
+    } else {
+      print('[PassPlayProvider] No pending placement found at position: $position');
     }
   }
 

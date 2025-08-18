@@ -392,6 +392,13 @@ class PlayerUi extends StatelessWidget {
   final int points;
   final String image;
   final List<Tile> tiles;
+  
+  /// Calculates the average size between rack tile and board tile for better drag feedback
+  static double _getDragFeedbackSize(double rackTileSize) {
+    const double boardCellSize = 28.0; // Standard board cell size (15x15 grid)
+    return (rackTileSize + boardCellSize) / 2;
+  }
+  
   @override
   Widget build(BuildContext context) {
     final passPlay = context.read<PassPlayProvider?>();
@@ -430,11 +437,12 @@ class PlayerUi extends StatelessWidget {
                     child: Draggable<Tile>(
                       data: tile,
                       feedback: SizedBox(
-                        width: tileSize,
-                        height: tileSize,
+                        // Use average size between rack tile and board tile for better visual consistency
+                        width: _getDragFeedbackSize(tileSize),
+                        height: _getDragFeedbackSize(tileSize),
                         child: TileUI(
-                          width: tileSize,
-                          height: tileSize,
+                          width: _getDragFeedbackSize(tileSize),
+                          height: _getDragFeedbackSize(tileSize),
                           letter: tile.letter,
                           points: tile.value,
                           left: 0,
