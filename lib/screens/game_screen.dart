@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:mp_tictactoe/provider/room_data_provider.dart';
 import 'package:mp_tictactoe/resources/socket_methods.dart';
-import 'package:mp_tictactoe/views/scoreboard.dart';
-import 'package:mp_tictactoe/views/scrabble_board.dart';
 import 'package:mp_tictactoe/provider/game_provider.dart';
 import 'package:mp_tictactoe/views/waiting_lobby.dart';
-import 'package:mp_tictactoe/views/player_rack.dart';
-import 'package:mp_tictactoe/views/game_controls.dart';
-import 'package:mp_tictactoe/views/move_history.dart';
-import 'package:mp_tictactoe/views/abilities_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 import 'package:mp_tictactoe/models/room.dart';
+import 'package:mp_tictactoe/widgets/topbar.dart';
+import 'package:mp_tictactoe/widgets/multiplayer_enemyUI.dart';
+import 'package:mp_tictactoe/widgets/multiplayer_boardUI.dart';
+import 'package:mp_tictactoe/widgets/multiplayer_playerUI.dart';
+import 'package:mp_tictactoe/widgets/gameBG.dart';
+
 
 class GameScreen extends StatefulWidget {
   static String routeName = '/game';
@@ -41,6 +41,13 @@ class _GameScreenState extends State<GameScreen> {
     // _socketMethods.updatePlayersStateListener(context);
     // _socketMethods.pointIncreaseListener(context);
     // _socketMethods.endGameListener(context);
+  }
+
+  @override
+  void dispose() {
+    // Clean up socket listeners to prevent memory leaks and context errors
+    _socketMethods.removeAllListeners();
+    super.dispose();
   }
 
   @override
@@ -130,239 +137,141 @@ class _GameScreenState extends State<GameScreen> {
           );
         },
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF101828),
-              Color(0xFF16304A),
+      body: waiting
+          ? const WaitingLobby()
+          : _buildGameScreen(roomDataProvider),
+    );
+  }
+
+  Widget _buildGameScreen(RoomDataProvider roomDataProvider) {
+    return ChangeNotifierProvider<GameProvider>(
+      create: (_) => GameProvider(),
+      builder: (context, child) {
+        // Seed GameProvider with current Room and my player id
+        final game = context.read<GameProvider>();
+        final room = roomDataProvider.room!;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          game.updateRoom(room);
+          // Map my socket id to the corresponding Player.id
+          final mySocketId = _socketMethods.socketClient.id;
+          final me = mySocketId == null
+              ? null
+              : room.players.firstWhere(
+                  (p) => p.socketId == mySocketId,
+                  orElse: () => room.players.first,
+                );
+          game.setCurrentPlayerId((me ?? room.players.first).id);
+        });
+
+        // Keep GameProvider synced with RoomDataProvider on every socket update
+        final sync = Selector<RoomDataProvider, Room?>(
+          selector: (_, prov) => prov.room,
+          builder: (ctx, latestRoom, __) {
+            if (latestRoom != null) {
+              ctx.read<GameProvider>().updateRoom(latestRoom);
+            }
+            return const SizedBox.shrink();
+          },
+        );
+
+        return Scaffold(
+          body: Stack(
+            children: [
+              // Background
+              GameUi(child: _buildGameScreenContent(roomDataProvider)),
+              // Sync widget
+              sync,
             ],
           ),
-        ),
-        child: waiting
-            ? const WaitingLobby()
-            : ChangeNotifierProvider<GameProvider>(
-              create: (_) => GameProvider(),
-              builder: (context, child) {
-                // Seed GameProvider with current Room and my player id
-                final game = context.read<GameProvider>();
-                final room = roomDataProvider.room!;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  game.updateRoom(room);
-                  // Map my socket id to the corresponding Player.id
-                  final mySocketId = _socketMethods.socketClient.id;
-                  final me = mySocketId == null
-                      ? null
-                      : room.players.firstWhere(
-                          (p) => p.socketId == mySocketId,
-                          orElse: () => room.players.first,
-                        );
-                  game.setCurrentPlayerId((me ?? room.players.first).id);
-                });
+        );
+      },
+    );
+  }
 
-                // Keep GameProvider synced with RoomDataProvider on every socket update
-                // This prevents turn desync between clients
-                // The selector triggers when RoomDataProvider.room changes
-                final sync = Selector<RoomDataProvider, Room?>(
-                  selector: (_, prov) => prov.room,
-                  builder: (ctx, latestRoom, __) {
-                    if (latestRoom != null) {
-                      // Update GameProvider's room state; it recomputes isMyTurn
-                      ctx.read<GameProvider>().updateRoom(latestRoom);
-                    }
-                    return const SizedBox.shrink();
-                  },
-                );
-                return SafeArea(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 800;
-                      // final board = const Expanded(child: ScrabbleBoard());
-                      final controls = Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Builder(builder: (context) {
-                            final g = context.watch<GameProvider>();
-                            final r = g.room;
-                            String turnLabel = 'بانتظار اللاعبين...';
-                            bool myTurn = g.isMyTurn;
-                            if (r != null && r.players.isNotEmpty) {
-                              final idx = r.currentPlayerIndex;
-                              final name = r.players[idx].nickname;
-                              turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
-                            }
-                            return Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: (myTurn ? const Color(0xFF26A69A) : const Color(0xFFE57373))
-                                    .withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: myTurn ? const Color(0xFF26A69A) : const Color(0xFFE57373),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    myTurn ? Icons.person : Icons.arrow_right_alt,
-                                    size: 18,
-                                    color: myTurn ? const Color(0xFF26A69A) : const Color(0xFFE57373),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    turnLabel,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                          const AbilitiesBar(),
-                          const SizedBox(height: 8),
-                          const PlayerRack(),
-                          const GameControls(),
-                        ],
-                      );
-
-                      if (isWide) {
-                        return LayoutBuilder(
-                          builder: (context, constraints) {
-                            final boardW = constraints.maxWidth * 0.6;
-                            final sideW = constraints.maxWidth - boardW;
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                SizedBox(
-                                  width: boardW,
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(8.0),
-                                    child: ScrabbleBoard(),
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: sideW,
-                                  child: Column(
-                                    children: [
-                                      sync,
-                                      const Scoreboard(),
-                                      const MoveHistory(),
-                                      Expanded(child: controls),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      }
-
-                      return Column(
-                         children: [
-                          // Header that can wrap instead of scrolling
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                            child: Wrap(
-                              alignment: WrapAlignment.center,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              runSpacing: 4,
-                              children: [
-                                Scoreboard(),
-                                MoveHistory(),
-                              ],
-                            ),
-                          ),
-                          // Board takes ~60% height
-                          const Expanded(flex: 7, child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: ScrabbleBoard(),
-                          )),
-                          // Lower panel takes ~40% height
-                          Expanded(
-                            flex: 3,
-                            child: LayoutBuilder(
-                              builder: (context, c) {
-                                // Scale UI down for narrow widths; keep board size unchanged
-                                final scale = (c.maxWidth / 900).clamp(0.75, 1.0);
-                                final baseText = 16.0 * scale;
-                                return Transform.scale(
-                                  scale: scale,
-                                  alignment: Alignment.topCenter,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        sync,
-                                        Builder(builder: (context) {
-                                          final g = context.watch<GameProvider>();
-                                          final r = g.room;
-                                          String turnLabel = 'بانتظار اللاعبين...';
-                                          bool myTurn = g.isMyTurn;
-                                          if (r != null && r.players.isNotEmpty) {
-                                            final idx = r.currentPlayerIndex;
-                                            final name = r.players[idx].nickname;
-                                            turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
-                                          }
-                                          return Container(
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                            decoration: BoxDecoration(
-                                              color: (myTurn ? const Color(0xFF26A69A) : const Color(0xFFE57373))
-                                                  .withOpacity(0.15),
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: myTurn ? const Color(0xFF26A69A) : const Color(0xFFE57373),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  myTurn ? Icons.person : Icons.arrow_right_alt,
-                                                  size: 16 * scale,
-                                                  color: myTurn ? const Color(0xFF26A69A) : const Color(0xFFE57373),
-                                                ),
-                                                SizedBox(width: 6 * scale),
-                                                Text(
-                                                  turnLabel,
-                                                  style: TextStyle(
-                                                    fontSize: baseText,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        }),
-                                        const AbilitiesBar(),
-                                        const PlayerRack(),
-                                        const GameControls(),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
+  Widget _buildGameScreenContent(RoomDataProvider roomDataProvider) {
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final room = roomDataProvider.room!;
+          final mySocketId = _socketMethods.socketClient.id;
+          final currentPlayer = room.players[room.currentPlayerIndex];
+          final isMyTurn = currentPlayer.socketId == mySocketId;
+          
+          // Get my player and opponent player
+          final me = mySocketId == null ? null : room.players.firstWhere(
+            (p) => p.socketId == mySocketId,
+            orElse: () => room.players.first,
+          );
+          final opponent = room.players.firstWhere(
+            (p) => p.socketId != mySocketId,
+            orElse: () => room.players.last,
+          );
+          
+          return Column(
+            children: [
+              // Top Bar - 7% of screen height
+              SizedBox(
+                height: constraints.maxHeight * 0.07,
+                child: Builder(builder: (context) {
+                  final g = context.watch<GameProvider>();
+                  final r = g.room;
+                  String turnLabel = 'بانتظار اللاعبين...';
+                  bool myTurn = g.isMyTurn;
+                  if (r != null && r.players.isNotEmpty) {
+                    final idx = r.currentPlayerIndex;
+                    final name = r.players[idx].nickname;
+                    turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
+                  }
+                  return Topbar(currentText: turnLabel);
+                }),
+              ),
+              
+              // Enemy UI - 17% of screen height
+              SizedBox(
+                height: constraints.maxHeight * 0.17,
+                child: MultiplayerEnemyUi(
+                  name: opponent.nickname,
+                  points: opponent.score,
+                  image: "https://placehold.co/100x100",
+                  tiles: opponent.rack,
+                  socketMethods: _socketMethods,
+                ),
+              ),
+              
+              // Game Board - Expanded main content
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: MultiplayerBoardUI(socketMethods: _socketMethods),
+                ),
+              ),
+              
+              // Player UI - 21% of screen height
+              SizedBox(
+                height: constraints.maxHeight * 0.21,
+                child: Builder(builder: (context) {
+                  // Debug: Print player and tile information
+                  debugPrint('[GameScreen] Player UI Debug:');
+                  debugPrint('[GameScreen]   me: ${me?.nickname ?? 'null'}');
+                  debugPrint('[GameScreen]   me?.rack: ${me?.rack.length ?? 0} tiles');
+                  if (me?.rack.isNotEmpty == true) {
+                    debugPrint('[GameScreen]   First tile: ${me!.rack.first.letter} (${me.rack.first.value} points)');
+                  }
+                  
+                  return MultiplayerPlayerUi(
+                    name: me?.nickname ?? 'Player',
+                    points: me?.score ?? 0,
+                    image: "https://placehold.co/100x100",
+                    tiles: me?.rack ?? [],
+                    socketMethods: _socketMethods,
+                  );
+                }),
+              ),
+              SizedBox(height: constraints.maxHeight * 0.005),
+            ],
+          );
+        },
       ),
     );
   }

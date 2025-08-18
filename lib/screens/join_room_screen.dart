@@ -24,12 +24,14 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[JoinRoomScreen] Initializing...');
     _socketMethods.joinRoomSuccessListener(context);
     _socketMethods.errorOccuredListener(context);
     _socketMethods.updateRoomListener(context);
     // Lobby listeners
     _socketMethods.roomsListListener(context, (rooms) {
       if (!mounted) return;
+      debugPrint('[JoinRoomScreen] Received ${rooms.length} public rooms');
       setState(() {
         _publicRooms = rooms;
         _loadingRooms = false;
@@ -38,6 +40,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
     _socketMethods.roomsUpdatedListener(() {
       // re-fetch when server signals changes
       if (!mounted) return;
+      debugPrint('[JoinRoomScreen] Rooms updated, re-fetching...');
       _fetchRooms();
     });
     _fetchRooms();
@@ -45,6 +48,8 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
 
   @override
   void dispose() {
+    // Clean up socket listeners to prevent context errors
+    _socketMethods.removeAllListeners();
     super.dispose();
     _gameIdController.dispose();
     _nameController.dispose();
@@ -73,6 +78,58 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                 fontSize: 36,
               ),
               const SizedBox(height: 8),
+              // Socket connection status indicator
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: _socketMethods.socketClient.connected 
+                          ? Colors.green.withOpacity(0.2) 
+                          : Colors.red.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _socketMethods.socketClient.connected ? Colors.green : Colors.red,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _socketMethods.socketClient.connected ? Icons.wifi : Icons.wifi_off,
+                            color: _socketMethods.socketClient.connected ? Colors.green : Colors.red,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _socketMethods.socketClient.connected 
+                              ? 'متصل بالخادم' 
+                              : 'غير متصل بالخادم',
+                            style: TextStyle(
+                              color: _socketMethods.socketClient.connected ? Colors.green : Colors.red,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    onPressed: () {
+                      debugPrint('[JoinRoomScreen] Manual refresh requested');
+                      debugPrint('[JoinRoomScreen] Socket connected: ${_socketMethods.socketClient.connected}');
+                      debugPrint('[JoinRoomScreen] Socket ID: ${_socketMethods.socketClient.id}');
+                      _fetchRooms();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'تحديث القائمة',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               SizedBox(
                 height: size.height * 0.4,
                 child: _loadingRooms
@@ -84,10 +141,15 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                             separatorBuilder: (_, __) => const Divider(height: 1),
                             itemBuilder: (context, i) {
                               final r = _publicRooms[i];
-                              final id = r['id'] as String;
-                              final name = r['name'] as String;
-                              final seats = r['seats'] as String;
-                              final status = r['status'] as String;
+                              // Handle both MongoDB ObjectId and regular string IDs
+                              final id = (r['_id'] ?? r['id'] ?? '').toString();
+                              final name = r['name'] as String? ?? 'غرفة';
+                              final seats = r['seats'] as String? ?? '2';
+                              final status = r['status'] as String? ?? 'open';
+                              
+                              debugPrint('[JoinRoomScreen] Room $i: id=$id, name=$name, seats=$seats, status=$status');
+                              debugPrint('[JoinRoomScreen] Full room data: $r');
+                              
                               return ListTile(
                                 leading: const Icon(Icons.videogame_asset),
                                 title: Text(name),
@@ -100,6 +162,8 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                                       );
                                       return;
                                     }
+                                    debugPrint('[JoinRoomScreen] Joining room: $id with nickname: ${_nameController.text}');
+                                    debugPrint('[JoinRoomScreen] Room data being sent: {nickname: ${_nameController.text}, roomId: $id}');
                                     _socketMethods.joinRoom(_nameController.text, id);
                                   },
                                   child: const Text('انضمام'),
@@ -136,10 +200,13 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                   SizedBox(
                     width: 120,
                     child: CustomButton(
-                      onTap: () => _socketMethods.joinRoom(
-                        _nameController.text,
-                        _gameIdController.text,
-                      ),
+                      onTap: () {
+                        debugPrint('[JoinRoomScreen] Manual join - Nickname: ${_nameController.text}, Room ID: ${_gameIdController.text}');
+                        _socketMethods.joinRoom(
+                          _nameController.text,
+                          _gameIdController.text,
+                        );
+                      },
                       text: 'انضمام',
                     ),
                   ),

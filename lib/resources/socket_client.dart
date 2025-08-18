@@ -13,6 +13,24 @@ class SocketClient {
       'reconnectionDelay': 800,
       'timeout': 5000,
     });
+    
+    // Add connection status listeners
+    socket!.onConnect((_) {
+      print('[SocketClient] Connected to server');
+    });
+    
+    socket!.onDisconnect((_) {
+      print('[SocketClient] Disconnected from server');
+    });
+    
+    socket!.onConnectError((error) {
+      print('[SocketClient] Connection error: $error');
+    });
+    
+    socket!.onError((error) {
+      print('[SocketClient] Socket error: $error');
+    });
+    
     socket!.connect();
   }
 

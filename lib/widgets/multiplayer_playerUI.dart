@@ -1,0 +1,339 @@
+import 'package:flutter/material.dart';
+import 'package:mp_tictactoe/models/tile.dart';
+import 'tileUI.dart';
+import 'package:mp_tictactoe/provider/room_data_provider.dart';
+import 'package:mp_tictactoe/resources/socket_methods.dart';
+import 'package:provider/provider.dart';
+
+class MultiplayerPlayerUi extends StatelessWidget {
+  const MultiplayerPlayerUi({
+    Key? key, 
+    required this.name, 
+    required this.points, 
+    required this.image, 
+    required this.tiles,
+    required this.socketMethods,
+  }) : super(key: key);
+  
+  final String name;
+  final int points;
+  final String image;
+  final List<Tile> tiles;
+  final SocketMethods socketMethods;
+  
+  @override
+  Widget build(BuildContext context) {
+    final roomDataProvider = context.watch<RoomDataProvider>();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final room = roomDataProvider.room;
+    
+    return Padding(
+      padding: const EdgeInsets.all(4.0),
+      child: Column(
+        children: [
+          // Tiles rack
+          Expanded(
+            flex: 12,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(2.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFFA46D41),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: tiles.isEmpty 
+                  ? [
+                      // Debug: Show empty rack message
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            'Rack is empty (${tiles.length} tiles)',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ]
+                  : tiles.asMap().entries.map((entry) {
+                      final tile = entry.value;
+                      final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
+                      
+                      // Debug: Print tile info
+                      debugPrint('[MultiplayerPlayerUi] Rendering tile: ${tile.letter} (${tile.value} points) at index ${entry.key}');
+                      debugPrint('[MultiplayerPlayerUi] Tile size: $tileSize, screenWidth: $screenWidth');
+                      
+                      return Container(
+                        child: Draggable<Tile>(
+                          data: tile,
+                          feedback:TileUI(
+                              width: tileSize,
+                              height: tileSize,
+                              letter: tile.letter,
+                              points: tile.value,
+                              left: 0,
+                              top: 0,
+                          ),
+                          childWhenDragging: const SizedBox.shrink(),
+                          onDragStarted: () {
+                            // Multiplayer: could emit socket event for drag preview
+                          },
+                          child: TileUI(
+                            width: tileSize,
+                            height: tileSize,
+                            letter: tile.letter,
+                            points: tile.value,
+                            left: 0,
+                            top: 0,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Controls row
+          Expanded(
+            flex: 10,
+            child: Row(
+              children: [
+                // Action buttons
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: room != null ? () {
+                              socketMethods.passTurn(room.id);
+                            } : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF137F83),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'تمرير الدور',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.034,
+                                fontFamily: 'Jomhuria',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: room != null ? () {
+                              socketMethods.submitMove(room.id);
+                            } : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(255, 127, 141, 25),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'تأكيد الحركة',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.03,
+                                fontFamily: 'Jomhuria',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 4),
+
+                // Exchange and history buttons
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: room != null ? () {
+                              // Exchange all tiles - create a unique identifier for each tile
+                              final mySocketId = socketMethods.socketClient.id;
+                              final me = mySocketId == null ? null : room.players.firstWhere(
+                                (p) => p.socketId == mySocketId,
+                                orElse: () => room.players.first,
+                              );
+                              if (me != null && me.rack.isNotEmpty) {
+                                // Create unique identifiers for tiles based on their properties and position
+                                final tileIds = me.rack.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final tile = entry.value;
+                                  // Create a unique ID combining letter, value, and position in rack
+                                  return '${tile.letter}_${tile.value}_$index';
+                                }).toList();
+                                
+                                if (tileIds.isNotEmpty) {
+                                  socketMethods.exchangeTiles(room.id, tileIds);
+                                }
+                              }
+                            } : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF9F6538),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'تبديل الكل',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.03,
+                                fontFamily: 'Jomhuria',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (room?.moveHistory == null) return;
+                              final moves = room!.moveHistory;
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                                ),
+                                builder: (ctx) {
+                                  return SafeArea(
+                                    child: Container(
+                                      constraints: BoxConstraints(
+                                        maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+                                      ),
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          Center(
+                                            child: Container(
+                                              width: 120,
+                                              height: 10,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade300,
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 24),
+                                          const Text(
+                                            'الكلمات السابقة',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 24),
+                                          Expanded(
+                                            child: ListView.builder(
+                                              itemCount: moves.length,
+                                              itemBuilder: (c, i) {
+                                                final m = moves[i];
+                                                final player = room!.players.firstWhere(
+                                                  (p) => p.id == m.playerId, 
+                                                  orElse: () => room!.players.first
+                                                );
+                                                final words = m.wordsFormed.isNotEmpty 
+                                                  ? m.wordsFormed.join('، ') 
+                                                  : '—';
+                                                return Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                                  child: ListTile(
+                                                    contentPadding: const EdgeInsets.symmetric(
+                                                      horizontal: 16, 
+                                                      vertical: 12
+                                                    ),
+                                                    title: Text(
+                                                      player.nickname, 
+                                                      textDirection: TextDirection.rtl, 
+                                                      style: const TextStyle(
+                                                        fontSize: 36, 
+                                                        fontWeight: FontWeight.w800
+                                                      )
+                                                    ),
+                                                    subtitle: Text(
+                                                      'الكلمات: $words', 
+                                                      textDirection: TextDirection.rtl, 
+                                                      style: const TextStyle(fontSize: 28)
+                                                    ),
+                                                    trailing: Text(
+                                                      '+${m.points}', 
+                                                      style: const TextStyle(
+                                                        fontSize: 32, 
+                                                        fontWeight: FontWeight.bold
+                                                      )
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6750A2),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: Text(
+                              'الكلمات السابقة',
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.03,
+                                fontFamily: 'Jomhuria',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

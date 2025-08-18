@@ -26,15 +26,18 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   @override
   void initState() {
     super.initState();
+    debugPrint('[CreateRoomScreen] Initializing...');
     _socketMethods.createRoomSuccessListener(context);
     _socketMethods.errorOccuredListener(context);
     // Also toggle overlay off on success/error at the screen level
     final socket = SocketClient.instance.socket!;
-    socket.on('createRoomSuccess', (_) {
+    socket.on('createRoomSuccess', (data) {
+      debugPrint('[CreateRoomScreen] Received createRoomSuccess event: $data');
       if (!mounted) return;
       setState(() => _creating = false);
     });
-    socket.on('errorOccurred', (_) {
+    socket.on('errorOccurred', (data) {
+      debugPrint('[CreateRoomScreen] Received errorOccurred event: $data');
       if (!mounted) return;
       setState(() => _creating = false);
     });
@@ -125,6 +128,19 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                 return;
                               }
                               setState(() => _creating = true);
+                              
+                              // Debug: Log the create room request
+                              debugPrint('[CreateRoomScreen] Creating room with:');
+                              debugPrint('[CreateRoomScreen]   Nickname: ${_nicknameController.text.trim()}');
+                              debugPrint('[CreateRoomScreen]   Room Name: ${_roomNameController.text.trim().isEmpty ? 'غرفة' : _roomNameController.text.trim()}');
+                              debugPrint('[CreateRoomScreen]   Is Public: $_isPublic');
+                              debugPrint('[CreateRoomScreen]   Max Players: $_maxPlayers');
+                              
+                              // Debug: Check socket connection state
+                              final socket = SocketClient.instance.socket;
+                              debugPrint('[CreateRoomScreen] Socket state: ${socket?.connected}');
+                              debugPrint('[CreateRoomScreen] Socket ID: ${socket?.id}');
+                              
                               // Fire create request
                               _socketMethods.createRoom(
                                 _nicknameController.text.trim(),
@@ -132,10 +148,12 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                 name: _roomNameController.text.trim().isEmpty ? 'غرفة' : _roomNameController.text.trim(),
                                 occupancy: _maxPlayers,
                               );
+                              
                               // Safety timeout: clear overlay if no server response
                               Future.delayed(const Duration(seconds: 10), () {
                                 if (!mounted) return;
                                 if (_creating) {
+                                  debugPrint('[CreateRoomScreen] Timeout reached - no server response');
                                   setState(() => _creating = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('لا يوجد استجابة من الخادم. جرّب مرة أخرى.')),

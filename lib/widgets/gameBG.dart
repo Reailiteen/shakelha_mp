@@ -54,7 +54,6 @@ class GameUi extends StatelessWidget {
             ),
           ),
         ),
-      
         // Outer green outline above background but does not block input
         IgnorePointer(
           ignoring: true,
@@ -70,8 +69,7 @@ class GameUi extends StatelessWidget {
             ),
           ),
         ),
-        // Inner brown container hosting a Stack for optional content
-        ],
+      ],
     );
   }
 }

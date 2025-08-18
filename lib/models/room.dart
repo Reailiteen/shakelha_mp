@@ -130,7 +130,7 @@ class Room {
   }) {
     final now = DateTime.now();
     final board = Board.empty();
-    final letterDistribution = LetterDistribution(tiles: []);
+    final letterDistribution = LetterDistribution.arabic();
     
     return Room(
       id: const Uuid().v4(),
