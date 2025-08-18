@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class Topbar extends StatelessWidget {
-  const Topbar({Key? key, required this.currentText}) : super(key: key);
+  const Topbar({
+    Key? key, 
+    required this.currentText,
+    this.actionButton,
+    this.showMenuBars = true,
+  }) : super(key: key);
+  
   final String currentText;
+  final Widget? actionButton;
+  final bool showMenuBars;
   
   /// Returns true if the back button should be hidden
   bool _shouldHideBackButton(BuildContext context) {
@@ -60,43 +68,45 @@ class Topbar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Menu button (left)
+            // Menu button or action button (left)
             SizedBox(
               width: screenWidth * 0.15,
               height: double.infinity,
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  final double h = c.maxHeight;
-                  final double barThickness = h / 8; // 3 bars + spacing
-                  final double spacing = h / 12;
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(3, (i) => Container(
-                        width: double.infinity,
-                        height: barThickness.clamp(2, 6),
-                        margin: EdgeInsets.symmetric(vertical: spacing / 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAE3C5),
-                          borderRadius: BorderRadius.circular(2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 1,
-                              offset: const Offset(0, 1),
+              child: showMenuBars
+                ? LayoutBuilder(
+                    builder: (context, c) {
+                      final double h = c.maxHeight;
+                      final double barThickness = h / 8; // 3 bars + spacing
+                      final double spacing = h / 12;
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(3, (i) => Container(
+                            width: double.infinity,
+                            height: barThickness.clamp(2, 6),
+                            margin: EdgeInsets.symmetric(vertical: spacing / 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFAE3C5),
+                              borderRadius: BorderRadius.circular(2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 1,
+                                  offset: const Offset(0, 1),
+                                ),
+                                BoxShadow(
+                                  color: const Color(0xFFFAE3C5).withOpacity(0.6),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                ),
+                              ],
                             ),
-                            BoxShadow(
-                              color: const Color(0xFFFAE3C5).withOpacity(0.6),
-                              blurRadius: 4,
-                              spreadRadius: 1,
-                            ),
-                          ],
+                          )),
                         ),
-                      )),
-                    ),
-                  );
-                },
-              ),
+                      );
+                    },
+                  )
+                : actionButton ?? const SizedBox.shrink(),
             ),
             
             // Center text area

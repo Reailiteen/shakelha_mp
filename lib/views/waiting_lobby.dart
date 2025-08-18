@@ -51,7 +51,7 @@ class _WaitingLobbyState extends State<WaitingLobby> {
 
           return Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
+              constraints: const BoxConstraints(maxWidth: 800), // Increased from 560 for better desktop visibility
               child: Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF512103).withOpacity(0.8),

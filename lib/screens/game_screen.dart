@@ -38,6 +38,7 @@ class _GameScreenState extends State<GameScreen> {
     _socketMethods.tilesExchangedListener(context);
     _socketMethods.errorOccurredListener(context);
     _socketMethods.turnChangedListener(context);
+    _socketMethods.boardResetListener(context);
     // _socketMethods.updatePlayersStateListener(context);
     // _socketMethods.pointIncreaseListener(context);
     // _socketMethods.endGameListener(context);
@@ -59,19 +60,6 @@ class _GameScreenState extends State<GameScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      appBar: waiting
-          ? null
-          : AppBar(
-              title: Text('Room: ${room.id}'),
-              centerTitle: true,
-              actions: [
-                IconButton(
-                  tooltip: 'Room sidebar',
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
-                ),
-              ],
-            ),
       endDrawer: waiting ? null : Builder(
         builder: (context) {
           final mySocketId = _socketMethods.socketClient.id;
@@ -123,6 +111,20 @@ class _GameScreenState extends State<GameScreen> {
                       const Padding(
                         padding: EdgeInsets.only(top: 4.0),
                         child: Text('Only the host can change visibility', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ),
+                    const SizedBox(height: 8),
+                    if (isHost)
+                      TextButton.icon(
+                        onPressed: () {
+                          _socketMethods.resetBoard(room.id);
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reset Board'),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          foregroundColor: Colors.red,
+                        ),
                       ),
                     const Spacer(),
                     TextButton.icon(
@@ -222,7 +224,15 @@ class _GameScreenState extends State<GameScreen> {
                     final name = r.players[idx].nickname;
                     turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
                   }
-                  return Topbar(currentText: turnLabel);
+                  return Topbar(
+                    currentText: turnLabel,
+                    showMenuBars: false,
+                    actionButton: IconButton(
+                      tooltip: 'Room sidebar',
+                      icon: const Icon(Icons.info_outline, color: Color(0xFFFAE3C5)),
+                      onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                    ),
+                  );
                 }),
               ),
               

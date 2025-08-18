@@ -256,9 +256,6 @@ class Board {
     }
 
     String word = buffer.toString();
-    if (isRow) {
-      word = _reverseIfArabic(word);
-    }
     return (word, collectedPoints);
   }
 
@@ -346,14 +343,7 @@ class Board {
   }
 }
 
-/// Arabic utility: reverse string for proper right-to-left visualization when extracting
-String _reverseIfArabic(String s) {
-  if (s.isEmpty) return s;
-  final hasArabic = s.runes.any((cp) => (cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F));
-  if (!hasArabic) return s;
-  final runes = s.runes.toList().reversed;
-  return String.fromCharCodes(runes);
-}
+
 
 /// Represents a cell multiplier (letter or word)
 class CellMultiplier {

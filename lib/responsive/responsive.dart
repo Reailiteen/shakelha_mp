@@ -27,10 +27,10 @@ class Responsive extends StatelessWidget {
           maxWidth = 560; // comfortable mobile content width
           padding = const EdgeInsets.symmetric(horizontal: 16);
         } else if (width < 1100) {
-          maxWidth = 900; // tablet / small laptop
+          maxWidth = 1200; // tablet / small laptop (increased from 900)
           padding = const EdgeInsets.symmetric(horizontal: 24);
         } else {
-          maxWidth = 1200; // desktop
+          maxWidth = 1800; // desktop (increased from 1200)
           padding = const EdgeInsets.symmetric(horizontal: 32);
         }
 

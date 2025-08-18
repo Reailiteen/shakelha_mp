@@ -6,6 +6,7 @@ import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/models/board.dart';
 import 'package:mp_tictactoe/models/letterDistribution.dart';
 import 'package:mp_tictactoe/models/player.dart';
+import 'package:mp_tictactoe/models/move.dart';
 import 'package:mp_tictactoe/provider/room_data_provider.dart';
 import 'package:mp_tictactoe/resources/socket_client.dart';
 import 'package:mp_tictactoe/screens/game_screen.dart';
@@ -156,89 +157,165 @@ class SocketMethods {
     });
   }
 
+  /// Reset the board state for a new game
+  void resetBoard(String roomId) {
+    debugPrint('[SocketMethods] Resetting board for room: $roomId');
+    _socketClient.emit('resetBoard', {
+      'roomId': roomId,
+    });
+  }
+
   // LISTENERS
   // Normalizes server (Mongo) room payload into our Room model JSON
-  Map<String, dynamic> _normalizeRoom(dynamic roomData) {
-    if (roomData is! Map) return {};
-    final map = Map<String, dynamic>.from(roomData);
-    // If already in our shape, return as-is
-    if (map.containsKey('id') && map.containsKey('board')) return map;
-
-    // Server shape -> client shape
-    final players = ((map['players'] as List?) ?? const []).map((p) {
-      final pm = Map<String, dynamic>.from(p as Map);
-      final socketID = pm['socketID'] as String? ?? '';
-      final nickname = pm['nickname'] as String? ?? 'Player';
-      final isCurrent = (map['turn'] is Map) && (map['turn']['socketID'] == socketID);
-      return {
-        'id': socketID,
-        'nickname': nickname,
-        'socketId': socketID,
-        'score': pm['points'] ?? 0,
-        'type': 'human',
-        'rack': <dynamic>[],
-        'moves': <dynamic>[],
-        'isCurrentTurn': isCurrent,
-        'hasPassed': false,
-        'hasExchanged': false,
-      };
-    }).toList();
-
-    final currentIdx = map['turnIndex'] is int ? map['turnIndex'] as int : 0;
-    final createdBy = players.isNotEmpty ? players.first['id'] as String : '';
-
-    // Map server board (2D array) -> client Board
-    Board normalizedBoard;
-    final size = (map['size'] is int) ? map['size'] as int : 15;
-    if (map['board'] is List) {
-      final srvBoard = map['board'] as List;
-      final grid = List.generate(size, (_) => List<Tile?>.filled(size, null));
-      for (int r = 0; r < srvBoard.length && r < size; r++) {
-        final row = srvBoard[r];
-        if (row is! List) continue;
-        for (int c = 0; c < row.length && c < size; c++) {
-          final cell = row[c];
-          if (cell == null) continue;
-          if (cell is Map) {
-            final letter = (cell['letter'] ?? '') as String;
-            if (letter.isEmpty) continue;
-            final points = (cell['points'] ?? cell['value'] ?? 1) as int;
-            final isNew = (cell['isNewlyPlaced'] ?? cell['isNew'] ?? false) as bool;
-            grid[r][c] = Tile(
-              letter: letter,
-              value: points,
-              isOnBoard: true,
-              isNewlyPlaced: isNew,
-            );
-          } else if (cell is String && cell.isNotEmpty) {
-            grid[r][c] = Tile(letter: cell, value: 1, isOnBoard: true);
-          }
+  Map<String, dynamic> _normalizeRoom(Map<String, dynamic> map) {
+    try {
+      // Normalize players from server format
+      final playersData = map['players'] as List? ?? [];
+      final validPlayersData = playersData.where((p) {
+        final playerMap = Map<String, dynamic>.from(p as Map);
+        final playerId = (playerMap['_id'] ?? playerMap['id'] ?? playerMap['socketID'] ?? '').toString();
+        return playerId.isNotEmpty;
+      }).toList();
+      
+      final players = validPlayersData.map<Map<String, dynamic>>((p) {
+        final playerMap = Map<String, dynamic>.from(p as Map);
+        
+        // Ensure required fields are never null or empty
+        final playerId = (playerMap['_id'] ?? playerMap['id'] ?? playerMap['socketID'] ?? '').toString();
+        final socketId = (playerMap['socketID'] ?? playerMap['socketId'] ?? playerId).toString();
+        final nickname = (playerMap['nickname'] ?? 'Player').toString();
+        
+        debugPrint('[normalizeRoom] Creating player data: id=$playerId, nickname=$nickname, socketId=$socketId');
+        
+        return {
+          'id': playerId,
+          'nickname': nickname,
+          'socketId': socketId,
+          'score': playerMap['points'] ?? 0,
+          'type': 'human',
+          'rack': playerMap['currentLetters'] ?? playerMap['rack'] ?? <dynamic>[],
+          'moves': playerMap['moves'] ?? <dynamic>[],
+          'isCurrentTurn': false,
+          'hasPassed': false,
+          'hasExchanged': false,
+        };
+      }).toList();
+      
+      // Handle different turn field formats
+      int currentIdx = 0;
+      String createdBy = '';
+      
+      if (map.containsKey('turnIndex')) {
+        currentIdx = map['turnIndex'] as int? ?? 0;
+      } else if (map.containsKey('turn')) {
+        final turnData = map['turn'] as Map?;
+        if (turnData != null) {
+          final turnPlayerId = turnData['_id'] ?? turnData['id'] ?? turnData['socketID'] ?? '';
+          currentIdx = players.indexWhere((p) => p['id'] == turnPlayerId);
+          if (currentIdx == -1) currentIdx = 0;
         }
       }
-      normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
-    } else {
-      normalizedBoard = Board.empty(size: size);
-    }
+      
+      // Get creator from players or host
+      if (players.isNotEmpty) {
+        createdBy = players.first['id'] as String;
+      } else if (map.containsKey('hostSocketId')) {
+        createdBy = map['hostSocketId'] as String? ?? '';
+      }
+      
+      // Always start with a fresh board for new games
+      // Only preserve board if the game is actively in progress
+      Board normalizedBoard;
+      final status = map['status'] as String? ?? 'open';
+      final hasGameStarted = map['hasGameStarted'] as bool? ?? false;
+      
+      if (status == 'playing' && hasGameStarted && map['board'] != null) {
+        // Game is in progress, preserve the board
+        final boardData = map['board'] as Map<String, dynamic>;
+        final size = boardData['size'] as int? ?? 15;
+        final gridData = boardData['grid'] as List? ?? [];
+        
+        final grid = List.generate(size, (r) {
+          if (r >= gridData.length) return List.filled(size, null);
+          final rowData = gridData[r] as List? ?? [];
+          return List.generate(size, (c) {
+            if (c >= rowData.length) return null;
+            final cell = rowData[c];
+            if (cell == null) return null;
+            if (cell is Map) {
+              final letter = (cell['letter'] ?? '') as String;
+              if (letter.isEmpty) return null;
+              final points = (cell['points'] ?? cell['value'] ?? 1) as int;
+              final isNew = (cell['isNewlyPlaced'] ?? cell['isNew'] ?? false) as bool;
+              return Tile(
+                letter: letter,
+                value: points,
+                isOnBoard: true,
+                isNewlyPlaced: isNew,
+              );
+            } else if (cell is String && cell.isNotEmpty) {
+              return Tile(letter: cell, value: 1, isOnBoard: true);
+            }
+            return null;
+          });
+        });
+        normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
+        debugPrint('[normalizeRoom] Preserving existing board with ${normalizedBoard.getAllTiles().length} tiles');
+      } else {
+        // New game or room not started, use empty board
+        normalizedBoard = Board.empty(size: 15);
+        debugPrint('[normalizeRoom] Starting with fresh empty board');
+      }
 
-    return {
-      'id': (map['_id'] ?? map['id'] ?? '').toString(),
-      'name': (map['name'] ?? 'Room').toString(),
-      'maxPlayers': map['occupancy'] is int ? map['occupancy'] as int : (map['maxPlayers'] ?? 2),
-      'players': players,
-      'board': normalizedBoard.toJson(),
-      'letterDistribution': LetterDistribution.arabic().toJson(),
-      'currentPlayerIndex': currentIdx,
-      'moveHistory': <dynamic>[],
-      'hasGameStarted': players.length > 1 || (map['status'] == 'playing') || normalizedBoard.getAllTiles().isNotEmpty,
-      'hasGameEnded': false,
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
-      'settings': const RoomSettings().toJson(),
-      'createdBy': createdBy,
-      'isPublic': (map['isPublic'] ?? false) as bool,
-      'status': (map['status'] ?? 'open').toString(),
-      'hostSocketId': (map['hostSocketId'] ?? '') as String,
-    };
+      final normalized = {
+        'id': (map['_id'] ?? map['id'] ?? '').toString(),
+        'name': (map['name'] ?? 'Room').toString(),
+        'maxPlayers': map['occupancy'] is int ? map['occupancy'] as int : (map['maxPlayers'] ?? 2),
+        'players': players,
+        'board': normalizedBoard.toJson(),
+        'letterDistribution': LetterDistribution.arabic().toJson(),
+        'currentPlayerIndex': currentIdx,
+        'moveHistory': <dynamic>[],
+        'hasGameStarted': players.length > 1 || (status == 'playing') || normalizedBoard.getAllTiles().isNotEmpty,
+        'hasGameEnded': false,
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+        'settings': const RoomSettings().toJson(),
+        'createdBy': createdBy,
+        'isPublic': (map['isPublic'] ?? false) as bool,
+        'status': status,
+        'hostSocketId': (map['hostSocketId'] ?? '') as String,
+      };
+      
+      debugPrint('[normalizeRoom] Successfully normalized room data');
+      debugPrint('[normalizeRoom] Room ID: ${normalized['id']}');
+      debugPrint('[normalizeRoom] Players count: ${normalized['players'].length}');
+      debugPrint('[normalizeRoom] Max players: ${normalized['maxPlayers']}');
+      debugPrint('[normalizeRoom] Status: ${normalized['status']}');
+      return normalized;
+    } catch (e) {
+      debugPrint('[normalizeRoom] Error normalizing room data: $e');
+      // Return a minimal valid room structure as fallback
+      return {
+        'id': (map['_id'] ?? map['id'] ?? 'fallback').toString(),
+        'name': (map['name'] ?? 'Room').toString(),
+        'maxPlayers': 2,
+        'players': <Map<String, dynamic>>[],
+        'board': Board.empty(size: 15).toJson(),
+        'letterDistribution': LetterDistribution.arabic().toJson(),
+        'currentPlayerIndex': 0,
+        'moveHistory': <dynamic>[],
+        'hasGameStarted': false,
+        'hasGameEnded': false,
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+        'settings': const RoomSettings().toJson(),
+        'createdBy': '',
+        'isPublic': false,
+        'status': 'open',
+        'hostSocketId': '',
+      };
+    }
   }
   void createRoomSuccessListener(BuildContext context) {
     _socketClient.on('createRoomSuccess', (roomData) {
@@ -249,11 +326,52 @@ class SocketMethods {
           return;
         }
         
-        debugPrint('[createRoomSuccess] raw payload: ' + roomData.toString());
-        var room = Room.fromJson(_normalizeRoom(roomData));
-        debugPrint('[createRoomSuccess] normalized: id=' + room.id +
-            ', players=' + room.players.length.toString() +
-            ', started=' + room.hasGameStarted.toString());
+        debugPrint('[createRoomSuccess] raw payload: $roomData');
+        
+        // Normalize the room data
+        Map<String, dynamic> normalizedData;
+        try {
+          normalizedData = _normalizeRoom(roomData);
+          debugPrint('[createRoomSuccess] Normalized data: ${normalizedData.keys}');
+        } catch (normalizeError) {
+          debugPrint('[createRoomSuccess] Error normalizing room data: $normalizeError');
+          // Try to create a minimal room structure
+          normalizedData = {
+            'id': (roomData['_id'] ?? roomData['id'] ?? 'fallback').toString(),
+            'name': (roomData['name'] ?? 'Room').toString(),
+            'maxPlayers': 2,
+            'players': <Map<String, dynamic>>[],
+            'board': Board.empty(size: 15).toJson(),
+            'letterDistribution': LetterDistribution.arabic().toJson(),
+            'currentPlayerIndex': 0,
+            'moveHistory': <dynamic>[],
+            'hasGameStarted': false,
+            'hasGameEnded': false,
+            'createdAt': DateTime.now().toIso8601String(),
+            'updatedAt': DateTime.now().toIso8601String(),
+            'settings': const RoomSettings().toJson(),
+            'createdBy': '',
+            'isPublic': false,
+            'status': 'open',
+            'hostSocketId': '',
+          };
+        }
+        
+        // Create Room object from normalized data
+        Room room;
+        try {
+          debugPrint('[createRoomSuccess] About to create Room from normalized data');
+          debugPrint('[createRoomSuccess] Players data type: ${normalizedData['players'].runtimeType}');
+          debugPrint('[createRoomSuccess] First player data: ${normalizedData['players'].isNotEmpty ? normalizedData['players'].first : 'No players'}');
+          
+          room = Room.fromJson(normalizedData);
+          debugPrint('[createRoomSuccess] Room created: id=${room.id}, players=${room.players.length}, started=${room.hasGameStarted}');
+        } catch (roomError) {
+          debugPrint('[createRoomSuccess] Error creating Room object: $roomError');
+          debugPrint('[createRoomSuccess] Normalized data that failed: $normalizedData');
+          return;
+        }
+        
         // Deal initial racks if empty
         if (room.players.every((p) => p.rack.isEmpty)) {
           // Ensure letter distribution has tiles
@@ -278,8 +396,9 @@ class SocketMethods {
           room = room.copyWith(players: newPlayers, letterDistribution: ld);
           debugPrint('[createRoomSuccess] After dealing, letter distribution has ${ld.tilesRemaining} tiles remaining');
         }
+        
         for (final p in room.players) {
-          debugPrint('[createRoomSuccess] rack ${p.nickname} size=' + p.rack.length.toString());
+          debugPrint('[createRoomSuccess] rack ${p.nickname} size=${p.rack.length}');
         }
         
         // Double-check context is still mounted before updating provider and navigating
@@ -293,6 +412,7 @@ class SocketMethods {
         debugPrint('[createRoomSuccess] Successfully navigated to game screen');
       } catch (e) {
         debugPrint('[createRoomSuccess] Error creating room: $e');
+        debugPrint('[createRoomSuccess] Stack trace: ${StackTrace.current}');
       }
     });
   }
@@ -553,22 +673,48 @@ class SocketMethods {
         final provider = Provider.of<RoomDataProvider>(context, listen: false);
         final current = provider.room;
         if (current != null) {
-          final mergedPlayers = incoming.players.map((pIn) {
-            final existing = current.players.firstWhere(
-              (p) => p.id == pIn.id,
-              orElse: () => pIn,
-            );
-            final useIncomingRack = pIn.rack.isNotEmpty;
-            final rack = useIncomingRack ? pIn.rack : existing.rack;
-            return pIn.copyWith(rack: rack);
-          }).toList();
+          // For tilesPlaced, we accept the complete board state from the server
+          // but we need to ensure player racks are properly updated
           final incomingHasTiles = incoming.board.getAllTiles().isNotEmpty;
-          final boardToUse = incomingHasTiles ? incoming.board : current.board;
-          incoming = incoming.copyWith(
-            board: boardToUse,
-            letterDistribution: current.letterDistribution,
-            players: mergedPlayers,
-          );
+          
+          if (incomingHasTiles) {
+            // Get the current player's socket ID to identify which player's rack to update
+            final mySocketId = _socketClient.id;
+            final currentPlayer = current.players.firstWhere(
+              (p) => p.socketId == mySocketId,
+              orElse: () => current.players.first,
+            );
+            
+            // Calculate how many tiles were placed by comparing board states
+            final currentBoardTiles = current.board.getAllTiles();
+            final incomingBoardTiles = incoming.board.getAllTiles();
+            final tilesAdded = incomingBoardTiles.length - currentBoardTiles.length;
+            
+            debugPrint('[tilesPlacedListener] Board tiles: ${currentBoardTiles.length} -> ${incomingBoardTiles.length} (+$tilesAdded)');
+            debugPrint('[tilesPlacedListener] Current player rack: ${currentPlayer.rack.length} tiles');
+            
+            if (tilesAdded > 0) {
+              // Remove the placed tiles from the current player's rack
+              final updatedPlayers = current.players.map((p) {
+                if (p.id == currentPlayer.id) {
+                  // Remove tiles from rack based on how many were placed
+                  final newRack = p.rack.take(p.rack.length - tilesAdded).toList();
+                  debugPrint('[tilesPlacedListener] Updated player ${p.nickname} rack: ${p.rack.length} -> ${newRack.length}');
+                  return p.updateRack(newRack);
+                }
+                return p;
+              }).toList();
+              
+              // Update the room with the new board and updated player racks
+              incoming = incoming.copyWith(
+                board: incoming.board,
+                letterDistribution: current.letterDistribution,
+                players: updatedPlayers,
+              );
+              
+              debugPrint('[tilesPlacedListener] Updated board and player racks after tile placement');
+            }
+          }
         }
         provider.updateRoom(incoming);
       } catch (e) {
@@ -705,12 +851,71 @@ class SocketMethods {
           return;
         }
         
-        final roomDataProvider = Provider.of<RoomDataProvider>(context, listen: false);
-        final winnerId = data['winnerId'] as String?;
-        final scores = Map<String, int>.from(data['scores']);
-        roomDataProvider.setGameOver(winnerId, scores);
+        var incoming = Room.fromJson(_normalizeRoom(data['room']));
+        final provider = Provider.of<RoomDataProvider>(context, listen: false);
+        final current = provider.room;
+        if (current != null) {
+          final mergedPlayers = incoming.players.map((pIn) {
+            final existing = current.players.firstWhere(
+              (p) => p.id == pIn.id,
+              orElse: () => pIn,
+            );
+            final useIncomingRack = pIn.rack.isNotEmpty;
+            final rack = useIncomingRack ? pIn.rack : existing.rack;
+            return pIn.copyWith(
+              rack: rack,
+              score: math.max(pIn.score, existing.score),
+            );
+          }).toList();
+          incoming = incoming.copyWith(
+            board: incoming.board,
+            letterDistribution: current.letterDistribution,
+            players: mergedPlayers,
+          );
+        }
+        provider.updateRoom(incoming);
       } catch (e) {
         debugPrint('[gameOverListener] Error updating game over: $e');
+      }
+    });
+  }
+
+  /// Listens for board reset events (new game)
+  void boardResetListener(BuildContext context) {
+    _socketClient.on('boardReset', (data) {
+      try {
+        // Check if context is still mounted before accessing Provider
+        if (!context.mounted) {
+          debugPrint('[boardResetListener] Context no longer mounted, skipping board reset update');
+          return;
+        }
+        
+        debugPrint('[boardResetListener] Board reset event received: $data');
+        
+        // Reset the local room state to start fresh
+        final provider = Provider.of<RoomDataProvider>(context, listen: false);
+        final current = provider.room;
+        if (current != null) {
+          // Create a fresh room with empty board and reset scores
+          final resetPlayers = current.players.map((p) => p.copyWith(
+            score: 0,
+            rack: <Tile>[],
+          )).toList();
+          
+          final resetRoom = current.copyWith(
+            board: Board.empty(size: 15),
+            players: resetPlayers,
+            letterDistribution: LetterDistribution.arabic(),
+            moveHistory: <Move>[],
+            hasGameStarted: false,
+            hasGameEnded: false,
+          );
+          
+          provider.updateRoom(resetRoom);
+          debugPrint('[boardResetListener] Board reset completed, starting fresh game');
+        }
+      } catch (e) {
+        debugPrint('[boardResetListener] Error resetting board: $e');
       }
     });
   }
@@ -762,6 +967,7 @@ class SocketMethods {
     _socketClient.off('turnPassed');
     _socketClient.off('tilesExchanged');
     _socketClient.off('gameOver');
+    _socketClient.off('boardReset');
     _socketClient.off('turnChanged');
     _socketClient.off('errorOccurred');
     _socketClient.off('updatePlayers');
