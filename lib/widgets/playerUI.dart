@@ -473,190 +473,153 @@ class PlayerUi extends StatelessWidget {
           Expanded(
             flex: 10,
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Action buttons
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final prov = context.read<PassPlayProvider?>();
-                              prov?.passTurn();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF137F83),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'تمرير الدور',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.034,
-                                fontFamily: 'Jomhuria',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // No-op hint UI. Logic to be added later.
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(255, 127, 141, 25),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'اقتراح كلمة',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.03,
-                                fontFamily: 'Jomhuria',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                // Pass turn icon button
+                IconButton(
+                  onPressed: () {
+                    final prov = context.read<PassPlayProvider?>();
+                    prov?.passTurn();
+                  },
+                  icon: const Icon(Icons.skip_next, color: Colors.white, size: 24),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF137F83),
+                    shape: const CircleBorder(),
                   ),
                 ),
-
-                const SizedBox(width: 4),
-
-                // Swap and history buttons
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final prov = context.read<PassPlayProvider?>();
-                              if (prov == null) return;
-                              final player = prov.currentPlayer;
-                              if (player == null) return;
-                              if (player.rack.isEmpty) return;
-                              // Swap out all tiles and pass the turn
-                              prov.swapTiles(List<Tile>.from(player.rack));
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF9F6538),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'تبديل الكل',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.03,
-                                fontFamily: 'Jomhuria',
-                              ),
-                            ),
-                          ),
+                
+                // Word suggestion icon button
+                IconButton(
+                  onPressed: () {
+                    // No-op hint UI. Logic to be added later.
+                  },
+                  icon: const Icon(Icons.lightbulb, color: Colors.white, size: 24),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 127, 141, 25),
+                    shape: const CircleBorder(),
+                  ),
+                ),
+                
+                // Submit button as small container (centered)
+                GestureDetector(
+                  onTap: () {
+                    final prov = context.read<PassPlayProvider?>();
+                    if (prov != null) {
+                      prov.submitMove();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: const Text(
+                      'إرسال',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              final prov = context.read<PassPlayProvider?>();
-                              if (prov?.room == null) return;
-                              final moves = prov!.room!.moveHistory;
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                                ),
-                                builder: (ctx) {
-                                  return SafeArea(
-                                    child: Container(
-                                      constraints: BoxConstraints(
-                                        maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-                                      ),
-                                      padding: const EdgeInsets.all(24),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                                        children: [
-                                          const SizedBox(height: 12),
-                                          Center(
-                                            child: Container(
-                                              width: 120,
-                                              height: 10,
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade300,
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          const Text(
-                                            'الكلمات السابقة',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-                                          ),
-                                          const SizedBox(height: 24),
-                                          Expanded(
-                                            child: ListView.builder(
-                                              itemCount: moves.length,
-                                              itemBuilder: (c, i) {
-                                                final m = moves[i];
-                                                final player = prov.room!.players.firstWhere((p) => p.id == m.playerId, orElse: () => prov.room!.players.first);
-                                                final words = m.wordsFormed.isNotEmpty ? m.wordsFormed.join('، ') : '—';
-                                                return Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                                  child: ListTile(
-                                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                    title: Text(player.nickname, textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800)),
-                                                    subtitle: Text('الكلمات: $words', textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 28)),
-                                                    trailing: Text('+${m.points}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                    ),
+                  ),
+                ),
+                
+                // Swap all tiles icon button
+                IconButton(
+                  onPressed: () {
+                    final prov = context.read<PassPlayProvider?>();
+                    if (prov == null) return;
+                    final player = prov.currentPlayer;
+                    if (player == null) return;
+                    if (player.rack.isEmpty) return;
+                    // Swap out all tiles and pass the turn
+                    prov.swapTiles(List<Tile>.from(player.rack));
+                  },
+                  icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 24),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF9F6538),
+                    shape: const CircleBorder(),
+                  ),
+                ),
+                
+                // Move history icon button
+                IconButton(
+                  onPressed: () {
+                    final prov = context.read<PassPlayProvider?>();
+                    if (prov?.room == null) return;
+                    final moves = prov!.room!.moveHistory;
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      builder: (ctx) {
+                        return SafeArea(
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+                            ),
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const SizedBox(height: 12),
+                                Center(
+                                  child: Container(
+                                    width: 120,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                                  );
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6750A2),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'الكلمات السابقة',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.03,
-                                fontFamily: 'Jomhuria',
-                              ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                const Text(
+                                  'الكلمات السابقة',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 24),
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: moves.length,
+                                    itemBuilder: (c, i) {
+                                      final m = moves[i];
+                                      final player = prov.room!.players.firstWhere((p) => p.id == m.playerId, orElse: () => prov.room!.players.first);
+                                      final words = m.wordsFormed.isNotEmpty ? m.wordsFormed.join('، ') : '—';
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                        child: ListTile(
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          title: Text(player.nickname, textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800)),
+                                          subtitle: Text('الكلمات: $words', textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 28)),
+                                          trailing: Text('+${m.points}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ),
-                    ],
+                        );
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.history, color: Colors.white, size: 24),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF6750A2),
+                    shape: const CircleBorder(),
                   ),
                 ),
               ],

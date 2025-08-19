@@ -76,7 +76,7 @@ class _BoardUIState extends State<BoardUI> {
     final passPlay = context.watch<PassPlayProvider>();
     final screenHeight = MediaQuery.of(context).size.height;
     // Calculate board size to fit available space
-    final double availableHeight = screenHeight * 0.48;
+    final double availableHeight = screenHeight * 0.6;
     final double boardSize = availableHeight;
 
     // Helper function for decorative dots
@@ -95,12 +95,15 @@ class _BoardUIState extends State<BoardUI> {
 
     // Calculate cell size for outline generation
     // Use simpler calculation that matches GridView layout
-    // GridView has 15 cells with 1px spacing between them
-    // Total grid width = 15 * cellSize + 14 * 1px spacing
-    // So: 15 * cellSize + 14 = boardSize - 36 (border + padding)
-    // Solving: 15 * cellSize = boardSize - 50
-    // cellSize = (boardSize - 50) / 15
-    _cellSize = (boardSize - 50) / 15;
+    // GridView has 13 cells with 1px spacing between them
+    // Total grid width = 13 * cellSize + 12 * 1px spacing
+    // So: 13 * cellSize + 12 = boardSize - 16 (border only, no horizontal padding)
+    // Solving: 13 * cellSize = boardSize - 28
+    // cellSize = (boardSize - 28) / 13
+    _cellSize = (boardSize - 28) / 13;
+    
+    // Flag to enable/disable the dotted ribbon design
+    const bool showDottedRibbon = false; // Set to true to enable the circle design
     
     return Center(
       child: SizedBox(
@@ -110,9 +113,11 @@ class _BoardUIState extends State<BoardUI> {
           children: [
             // Bordered board container with grid inside
             Container(
+              width: boardSize,
+              height: boardSize,
               decoration: BoxDecoration(
                 color: const Color(0xE4BD8C).withOpacity(1), // Beige background
-                border: Border.all(color: const Color(0xFFDAA864), width: 16,strokeAlign: BorderSide.strokeAlignInside),
+                border: Border.all(color: const Color(0xFFDAA864), width: 8,strokeAlign: BorderSide.strokeAlignInside), // Reduced from 16 to 8
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
@@ -124,29 +129,30 @@ class _BoardUIState extends State<BoardUI> {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(2.0),
+                padding: const EdgeInsets.symmetric(vertical: 0.0), // Only vertical padding, no horizontal
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     // Get exact grid dimensions for precise outline positioning
                     final gridWidth = constraints.maxWidth;
                     final gridHeight = constraints.maxHeight;
-                    final actualCellSize = (gridWidth - 14) / 15; // 14px total spacing between 15 cells
+                    final actualCellSize = (gridWidth - 12) / 13; // 12px total spacing between 13 cells (no horizontal padding)
                     
                     // Update cell size for outline generation
                     _cellSize = actualCellSize;
                     
                     return GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 15,
-                        childAspectRatio: 1.0,
+                      shrinkWrap: true, // Prevent GridView from expanding beyond container
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 13, // Changed from 15 to 13
+                        mainAxisExtent: actualCellSize, // Force exact cell height
                         crossAxisSpacing: 1,
                         mainAxisSpacing: 1,
                       ),
-                      itemCount: 225,
+                      itemCount: 169, // Changed from 225 (15*15) to 169 (13*13)
                       itemBuilder: (context, index) {
-                        final row = index ~/ 15;
-                        final col = index % 15;
+                        final row = index ~/ 13; // Changed from 15 to 13
+                        final col = index % 13; // Changed from 15 to 13
                         final positionKey = '$row-$col';
                         final pos = Position(row: row, col: col);
                         final existingTile = passPlay.room?.board.getTileAt(pos);
@@ -171,12 +177,12 @@ class _BoardUIState extends State<BoardUI> {
                               specialColor = const Color(0xFF1E3A8A); // Dark blue
                               multiplierText = 'x${multiplier.value}';
                             } else {
-                              // Letter multipliers get neon yellow color
-                              specialColor = const Color(0xFFFFD700); // Neon yellow
+                              // Letter multipliers get purple color
+                              specialColor = const Color(0xFF9C27B0); // Purple
                               multiplierText = 'x${multiplier.value}';
                             }
                           }
-                        } else if (row == 7 && col == 7) {
+                        } else if (row == 6 && col == 6) { // Changed from 7,7 to 6,6 for 13x13 board
                           // Center square gets green color
                           specialColor = const Color(0xFF4CAF50); // Green
                         }
@@ -381,55 +387,56 @@ class _BoardUIState extends State<BoardUI> {
               ),
             
             // Dotted ribbon above the border
-            Positioned.fill(
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  final w = c.maxWidth;
-                  final h = c.maxHeight;
-                  const double inset = 8; // slightly outside to sit over the stroke
-                  const double dotSize = 8;
-                  final double step = boardSize * 0.04; // Smaller step for more dots
-                  final int countH = ((w - inset * 2) / step).ceil(); // Use ceil to ensure coverage
-                  final int countV = ((h - inset * 2) / step).ceil(); // Use ceil to ensure coverage
-                  final List<Widget> dots = [];
-                  
-                  // Horizontal dots (top and bottom)
-                  for (int i = 0; i <= countH; i++) {
-                    final dx = inset + i * step - dotSize / 2;
-                    // Ensure we don't go beyond the right edge
-                    if (dx + dotSize <= w - inset) {
-                      dots.add(Positioned(left: dx, top: inset - dotSize / 2, child: circle(dotSize)));
-                      dots.add(Positioned(left: dx, top: h - inset - dotSize / 2, child: circle(dotSize)));
+            if (showDottedRibbon)
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final w = c.maxWidth;
+                    final h = c.maxHeight;
+                    const double inset = 8; // slightly outside to sit over the stroke
+                    const double dotSize = 8;
+                    final double step = boardSize * 0.04; // Smaller step for more dots
+                    final int countH = ((w - inset * 2) / step).ceil(); // Use ceil to ensure coverage
+                    final int countV = ((h - inset * 2) / step).ceil(); // Use ceil to ensure coverage
+                    final List<Widget> dots = [];
+                    
+                    // Horizontal dots (top and bottom)
+                    for (int i = 0; i <= countH; i++) {
+                      final dx = inset + i * step - dotSize / 2;
+                      // Ensure we don't go beyond the right edge
+                      if (dx + dotSize <= w - inset) {
+                        dots.add(Positioned(left: dx, top: inset - dotSize / 2, child: circle(dotSize)));
+                        dots.add(Positioned(left: dx, top: h - inset - dotSize / 2, child: circle(dotSize)));
+                      }
                     }
-                  }
-                  
-                  // Vertical dots (left and right)
-                  for (int i = 0; i <= countV; i++) {
-                    final dy = inset + i * step - dotSize / 2;
-                    // Ensure we don't go beyond the bottom edge
-                    if (dy + dotSize <= h - inset) {
-                      dots.add(Positioned(left: inset - dotSize / 2, top: dy, child: circle(dotSize)));
-                      dots.add(Positioned(left: w - inset - dotSize / 2, top: dy, child: circle(dotSize)));
+                    
+                    // Vertical dots (left and right)
+                    for (int i = 0; i <= countV; i++) {
+                      final dy = inset + i * step - dotSize / 2;
+                      // Ensure we don't go beyond the bottom edge
+                      if (dy + dotSize <= h - inset) {
+                        dots.add(Positioned(left: inset - dotSize / 2, top: dy, child: circle(dotSize)));
+                        dots.add(Positioned(left: w - inset - dotSize / 2, top: dy, child: circle(dotSize)));
+                      }
                     }
-                  }
-                  
-                  // Ensure corner dots are always present
-                  dots.add(Positioned(left: inset - dotSize / 2, top: inset - dotSize / 2, child: circle(dotSize))); // Top-left
-                  dots.add(Positioned(left: w - inset - dotSize / 2, top: inset - dotSize / 2, child: circle(dotSize))); // Top-right
-                  dots.add(Positioned(left: inset - dotSize / 2, top: h - inset - dotSize / 2, child: circle(dotSize))); // Bottom-left
-                  dots.add(Positioned(left: w - inset - dotSize / 2, top: h - inset - dotSize / 2, child: circle(dotSize))); // Bottom-right
-                  
-                  return IgnorePointer(child: Stack(children: dots));
-                },
+                    
+                    // Ensure corner dots are always present
+                    dots.add(Positioned(left: inset - dotSize / 2, top: inset - dotSize / 2, child: circle(dotSize))); // Top-left
+                    dots.add(Positioned(left: w - inset - dotSize / 2, top: inset - dotSize / 2, child: circle(dotSize))); // Top-right
+                    dots.add(Positioned(left: inset - dotSize / 2, top: h - inset - dotSize / 2, child: circle(dotSize))); // Bottom-left
+                    dots.add(Positioned(left: w - inset - dotSize / 2, top: h - inset - dotSize / 2, child: circle(dotSize))); // Bottom-right
+                    
+                    return IgnorePointer(child: Stack(children: dots));
+                  },
+                ),
               ),
-            ),
             
             // Center tile star indicator (only show when center is empty)
-            if (passPlay.room?.board.getTileAt(Position(row: 7, col: 7)) == null &&
-                !passPlay.pendingPlacements.any((p) => p.position == Position(row: 7, col: 7)))
+            if (passPlay.room?.board.getTileAt(Position(row: 6, col: 6)) == null && // Changed from 7,7 to 6,6 for 13x13
+                !passPlay.pendingPlacements.any((p) => p.position == Position(row: 6, col: 6))) // Changed from 7,7 to 6,6 for 13x13
               Positioned(
-                left: (boardSize - 24) / 2, // Center the star (24 is star size)
-                top: (boardSize - 24) / 2,
+                left: 6 * (_cellSize + 1) + (_cellSize - 24) / 2, // Center the star on the 6,6 position
+                top: 6 * (_cellSize + 1) + (_cellSize - 24) / 2,
                 child: IgnorePointer(
                   child: Container(
                     width: 24,
@@ -480,23 +487,14 @@ class _BoardUIState extends State<BoardUI> {
       final minCol = sortedByCol.first.col;
       final maxCol = sortedByCol.last.col;
       
-      // Calculate exact positions using same logic as GridView
-      // Account for container padding and border
-      const double containerPadding = 2.0;
-      const double containerBorder = 16.0;
-      const double totalOffset = containerPadding + containerBorder;
-      
-      // GridView uses 1px spacing between cells
+      // Use the old approach that worked correctly
+      // Calculate positions based on cell size and spacing
       const double gridSpacing = 1.0;
       
-      // Common calculations (exactly as in debugging version)
-      final top = totalOffset + minRow * (cellSize + gridSpacing);
+      final top = minRow * (cellSize + gridSpacing);
       final height = (maxRow - minRow + 1) * cellSize + (maxRow - minRow) * gridSpacing;
       final width = (maxCol - minCol + 1) * cellSize + (maxCol - minCol) * gridSpacing;
-      
-      // Use ONLY Option 2 (Blue) - the one that aligned perfectly
-      // This is the exact calculation from the blue overlay that worked
-      final left = totalOffset + (14 - maxCol) * (cellSize + gridSpacing);
+      final left = minCol * (cellSize + gridSpacing);
       
       return Positioned(
         left: left,
@@ -550,9 +548,9 @@ class DebugGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Use same offset calculation as outline generation
-    const double containerPadding = 2.0;
-    const double containerBorder = 16.0;
-    const double totalOffset = containerPadding + containerBorder;
+    const double containerBorder = 8.0; // Changed from 16 to 8
+    const double containerVerticalPadding = 0.0; // Changed from 2 to 0
+    const double totalOffset = containerBorder + containerVerticalPadding;
     
     final paint = Paint()
       ..color = Colors.red.withOpacity(0.3)
@@ -560,21 +558,21 @@ class DebugGridPainter extends CustomPainter {
       ..strokeWidth = 1.0;
     
     // Draw grid lines to verify alignment
-    for (int i = 0; i <= 15; i++) {
+    for (int i = 0; i <= 13; i++) { // Changed from 15 to 13
       final x = totalOffset + i * (cellSize + 1); // +1 for grid spacing
       final y = totalOffset + i * (cellSize + 1);
       
       // Vertical lines
       canvas.drawLine(
         Offset(x, totalOffset),
-        Offset(x, totalOffset + 15 * (cellSize + 1) - 1),
+        Offset(x, totalOffset + 13 * (cellSize + 1) - 1), // Changed from 15 to 13
         paint,
       );
       
       // Horizontal lines
       canvas.drawLine(
         Offset(totalOffset, y),
-        Offset(totalOffset + 15 * (cellSize + 1) - 1, y),
+        Offset(totalOffset + 13 * (cellSize + 1) - 1, y), // Changed from 15 to 13
         paint,
       );
     }

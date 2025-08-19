@@ -70,13 +70,13 @@ class Board {
 
   /// Creates a new board with the given size and grid
   Board({
-    this.size = 15,
+    this.size = 13, // Changed from 15 to 13
     required this.grid,
     Map<Position, CellMultiplier>? cellMultipliers,
   }) : cellMultipliers = cellMultipliers ?? const {};
 
   /// Creates an empty board of the given size
-  factory Board.empty({int size = 15}) {
+  factory Board.empty({int size = 13}) { // Changed from 15 to 13
     return Board(
       size: size,
       grid: List.generate(
@@ -143,7 +143,7 @@ class Board {
     });
 
     final board = Board(
-      size: json['size'] ?? 15,
+      size: json['size'] ?? 13, // Changed from 15 to 13
       grid: grid,
       cellMultipliers: multipliers,
     );
@@ -556,7 +556,7 @@ class Board {
   
   /// Gets the center position of the board
   Position get centerPosition {
-    // For a 15x15 board (0-indexed), center is at (7,7)
+    // For a 13x13 board (0-indexed), center is at (6,6)
     final center = Position(row: size ~/ 2, col: size ~/ 2);
     print('[Board] Center position calculated as: (${center.row},${center.col}) for board size $size');
     return center;

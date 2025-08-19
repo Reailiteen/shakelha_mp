@@ -226,8 +226,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
           body: Stack(
             children: [
               // Background
-              GameUi(child: _buildGameScreenContent(passPlayProvider)),
-              // Sync widget
+              _buildGameScreenContent(passPlayProvider),
               sync,
             ],
           ),
@@ -360,7 +359,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
               
               // Game Board - 50% of screen height (main content)
               Expanded(
-                flex: 6,
+                flex: 7,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2.0),
                   child: BoardUI(),
@@ -369,7 +368,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
               SizedBox(height: constraints.maxHeight * 0.01),
               // Player UI - 18% of screen height (reduced from 20%)
               SizedBox(
-                height: constraints.maxHeight * 0.21,
+                height: constraints.maxHeight * 0.17,
                 child: Consumer<PassPlayProvider>(
                   builder: (context, passPlay, child) {
                     final room = passPlay.room!;
