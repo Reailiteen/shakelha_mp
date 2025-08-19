@@ -53,9 +53,8 @@ class Board {
       }
     }
     
-    // Triple word scores (corners and center)
+    // Triple word scores (corners only - no center)
     addSymmetric(0, 0, CellMultiplier.word(3));
-    addSymmetric(center, center, CellMultiplier.word(3));
     
     // Double word scores (diagonal from corners)
     addSymmetric(1, 1, CellMultiplier.word(2));
@@ -138,14 +137,8 @@ class Board {
       return false;
     }
 
-    // Must cover center cell on first move
-    final center = centerPosition;
-    final coversCenter = positions.any((p) => p == center);
-    print('[Board] First turn: center=$center, coversCenter=$coversCenter');
-    if (!coversCenter) {
-      print('[Board] First turn validation failed: does not cover center');
-      return false;
-    }
+    // No center coverage requirement since center has no multiplier
+    // First turn just needs to be in a straight line
 
     // Step 3: Collect main word (we ignore points and dictionary here)
     final (word, _) = buildWordFrom(newlyPlacedTiles.first.position!, isRow);
@@ -439,6 +432,19 @@ class Board {
   
   /// Gets the center position of the board
   Position get centerPosition => Position(row: size ~/ 2, col: size ~/ 2);
+  
+  /// Checks if a position has a multiplier (special cell)
+  bool isSpecialPosition(Position position) {
+    return cellMultipliers.containsKey(position);
+  }
+  
+  /// Gets the multiplier at a specific position, or null if none exists
+  CellMultiplier? getMultiplierAt(Position position) {
+    return cellMultipliers[position];
+  }
+  
+  /// Gets all positions that have multipliers (special cells)
+  Set<Position> get specialPositions => cellMultipliers.keys.toSet();
   
   /// Checks if the board is empty (first move)
   bool get isEmpty => getAllTiles().isEmpty;

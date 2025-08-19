@@ -262,6 +262,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                   },
                 ),
               ),
+              SizedBox(height: constraints.maxHeight * 0.005),
               
               // Enemy UI - 12% of screen height (reduced from 15%)
               SizedBox(
@@ -296,7 +297,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                   child: BoardUI(),
                 ),
               ),
-              
+              SizedBox(height: constraints.maxHeight * 0.01),
               // Player UI - 18% of screen height (reduced from 20%)
               SizedBox(
                 height: constraints.maxHeight * 0.21,

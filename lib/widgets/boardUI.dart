@@ -64,21 +64,12 @@ class BoardUI extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final passPlay = context.watch<PassPlayProvider>();
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Define special positions (like triple word score, double letter, etc.)
-    final Set<String> specialPositions = {
-      '0-0', '0-3', '0-7', '0-11', '0-14',
-      '3-0', '3-14', 
-      '7-0', '7-3', '7-7', '7-11', '7-14',
-      '11-0', '11-14',
-      '14-0', '14-3', '14-7', '14-11', '14-14',
-    };
-    
+    final screenHeight = MediaQuery.of(context).size.height;
     // Calculate board size to fit available space
-    final double availableWidth = screenWidth * 0.95;
-    final double boardSize = availableWidth;
+    final double availableHeight = screenHeight * 0.48;
+    final double boardSize = availableHeight;
 
+    // Helper function for decorative dots
     Widget circle([double size = 8]) => Container(
       width: size,
       height: size,
@@ -93,6 +84,7 @@ class BoardUI extends StatelessWidget {
     );
 
     return Center(
+
       child: SizedBox(
         width: boardSize,
         height: boardSize,
@@ -101,8 +93,8 @@ class BoardUI extends StatelessWidget {
             // Bordered board container with grid inside
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF512103),
-                border: Border.all(color: const Color(0xFFB77A3A), width: 10),
+                color: const Color(0xE4BD8C).withOpacity(1), // Beige background
+                border: Border.all(color: const Color(0xFFDAA864), width: 16,strokeAlign: BorderSide.strokeAlignInside),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
@@ -114,7 +106,7 @@ class BoardUI extends StatelessWidget {
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(6.0),
+                padding: const EdgeInsets.all(2.0),
                 child: GridView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -138,17 +130,27 @@ class BoardUI extends StatelessWidget {
                     final displayLetter = existingTile?.letter ?? (hasPending ? pending.tile.letter : '');
                     final displayPoints = existingTile?.value ?? (hasPending ? pending.tile.value : 0);
                     
-                    final bool isSpecial = specialPositions.contains(positionKey);
+                    final bool isSpecial = passPlay.room?.board.isSpecialPosition(pos) ?? false;
                     Color? specialColor;
+                    String? multiplierText;
                     
-                    if (row == 7 && col == 7) {
-                      specialColor = const Color(0xFF9E7649);
-                    } else if (isSpecial) {
-                      if (row == 0 || row == 14 || col == 0 || col == 14) {
-                        specialColor = const Color(0xFFFFECD6);
-                      } else {
-                        specialColor = const Color(0xFFEDDABE);
+                    if (isSpecial) {
+                      // Get the actual multiplier to determine styling
+                      final multiplier = passPlay.room?.board.getMultiplierAt(pos);
+                      if (multiplier != null) {
+                        if (multiplier.isWordMultiplier) {
+                          // Word multipliers get dark blue color
+                          specialColor = const Color(0xFF1E3A8A); // Dark blue
+                          multiplierText = 'x${multiplier.value}';
+                        } else {
+                          // Letter multipliers get neon yellow color
+                          specialColor = const Color(0xFFFFD700); // Neon yellow
+                          multiplierText = 'x${multiplier.value}';
+                        }
                       }
+                    } else if (row == 7 && col == 7) {
+                      // Center square gets green color
+                      specialColor = const Color(0xFF4CAF50); // Green
                     }
                     
                     return DragTarget<Object>(
@@ -177,7 +179,25 @@ class BoardUI extends StatelessWidget {
                             ),
                             borderRadius: BorderRadius.circular(2),
                           ),
-                          child: isSpecial ? Center(child: circle()) : null,
+                          child: isSpecial && multiplierText != null 
+                              ? Center(
+                                  child: Text(
+                                    multiplierText!,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          offset: const Offset(1, 1),
+                                          blurRadius: 2,
+                                          color: Colors.black.withOpacity(0.8),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : null,
                         );
 
                         Widget tileVisual(String letter, int points, double size) => Container(
@@ -307,22 +327,39 @@ class BoardUI extends StatelessWidget {
                 builder: (context, c) {
                   final w = c.maxWidth;
                   final h = c.maxHeight;
-                  const double inset = 6; // slightly outside to sit over the stroke
+                  const double inset = 8; // slightly outside to sit over the stroke
                   const double dotSize = 8;
-                  final double step = boardSize * 0.05;
-                  final int countH = ((w - inset * 2) / step).floor();
-                  final int countV = ((h - inset * 2) / step).floor();
+                  final double step = boardSize * 0.04; // Smaller step for more dots
+                  final int countH = ((w - inset * 2) / step).ceil(); // Use ceil to ensure coverage
+                  final int countV = ((h - inset * 2) / step).ceil(); // Use ceil to ensure coverage
                   final List<Widget> dots = [];
+                  
+                  // Horizontal dots (top and bottom)
                   for (int i = 0; i <= countH; i++) {
                     final dx = inset + i * step - dotSize / 2;
-                    dots.add(Positioned(left: dx, top: inset - dotSize / 2, child: circle(dotSize)));
-                    dots.add(Positioned(left: dx, top: h - inset - dotSize / 2, child: circle(dotSize)));
+                    // Ensure we don't go beyond the right edge
+                    if (dx + dotSize <= w - inset) {
+                      dots.add(Positioned(left: dx, top: inset - dotSize / 2, child: circle(dotSize)));
+                      dots.add(Positioned(left: dx, top: h - inset - dotSize / 2, child: circle(dotSize)));
+                    }
                   }
+                  
+                  // Vertical dots (left and right)
                   for (int i = 0; i <= countV; i++) {
                     final dy = inset + i * step - dotSize / 2;
-                    dots.add(Positioned(left: inset - dotSize / 2, top: dy, child: circle(dotSize)));
-                    dots.add(Positioned(left: w - inset - dotSize / 2, top: dy, child: circle(dotSize)));
+                    // Ensure we don't go beyond the bottom edge
+                    if (dy + dotSize <= h - inset) {
+                      dots.add(Positioned(left: inset - dotSize / 2, top: dy, child: circle(dotSize)));
+                      dots.add(Positioned(left: w - inset - dotSize / 2, top: dy, child: circle(dotSize)));
+                    }
                   }
+                  
+                  // Ensure corner dots are always present
+                  dots.add(Positioned(left: inset - dotSize / 2, top: inset - dotSize / 2, child: circle(dotSize))); // Top-left
+                  dots.add(Positioned(left: w - inset - dotSize / 2, top: inset - dotSize / 2, child: circle(dotSize))); // Top-right
+                  dots.add(Positioned(left: inset - dotSize / 2, top: h - inset - dotSize / 2, child: circle(dotSize))); // Bottom-left
+                  dots.add(Positioned(left: w - inset - dotSize / 2, top: h - inset - dotSize / 2, child: circle(dotSize))); // Bottom-right
+                  
                   return IgnorePointer(child: Stack(children: dots));
                 },
               ),

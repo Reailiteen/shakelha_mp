@@ -41,7 +41,7 @@ class GameUi extends StatelessWidget {
             padding: const EdgeInsets.all(14.0),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF512103).withOpacity(0.55),
+                color: const Color(0xFF512103).withOpacity(0.8),
                 borderRadius: BorderRadius.circular(2),
               ),
               child: Stack(
@@ -62,7 +62,7 @@ class GameUi extends StatelessWidget {
               padding: const EdgeInsets.all(10.0),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF2D462D), width: 5),
+                  border: Border.all(color: const Color(0xFF2D462D), width: 8),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),

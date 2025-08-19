@@ -34,28 +34,20 @@ class Topbar extends StatelessWidget {
     final hideBackButton = _shouldHideBackButton(context);
     
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+      padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 2.0),
       child: Container(
         width: screenWidth * 0.95,
         height: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF6E2B0F),
-              Color(0xFF512103),
-            ],
-          ),
-          border: Border.all(
-            color: const Color(0xFFB16F15),
-            width: 3,
+          borderRadius: BorderRadius.circular(8),
+          image: DecorationImage(
+            image: AssetImage('lib/data/ui/topbar_bg.jpeg'),
+            fit: BoxFit.cover,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 4,
+              color: Colors.black.withOpacity(1),
+              blurRadius: 10,
               offset: const Offset(0, 2),
             ),
             BoxShadow(
@@ -82,7 +74,7 @@ class Topbar extends StatelessWidget {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(3, (i) => Container(
-                            width: double.infinity,
+                            width: screenWidth * 0.1,
                             height: barThickness.clamp(2, 6),
                             margin: EdgeInsets.symmetric(vertical: spacing / 2),
                             decoration: BoxDecoration(
@@ -116,17 +108,25 @@ class Topbar extends StatelessWidget {
                   final maxH = c.maxHeight;
                   final fontSize = (screenWidth * 0.07).clamp(10.0, maxH * 0.85);
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    padding: const EdgeInsets.only(left: 8.0, right: 8.0),
                     child: Center(
                       child: Container(
+                        height: maxH * 0.92,
+                        width: screenWidth * 0.7,
                         decoration: BoxDecoration(
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.2),
-                              blurRadius: 8,
+                              color: Colors.white.withOpacity(0.1),
+                              blurRadius: 5,
                               spreadRadius: 1,
                             ),
                           ],
+                          color: const Color(0xFF512103).withOpacity(0.9),
+                          border: Border.all(
+                            color: const Color(0xFFB16F15),
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           currentText,
@@ -157,9 +157,9 @@ class Topbar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFAE3C5).withOpacity(0.4),
-                          blurRadius: 8,
-                          spreadRadius: 1,
+                          color: const Color(0xFFFAE3C5).withOpacity(0.2),
+                          blurRadius: 5,
+                          spreadRadius: 0.2,
                         ),
                       ],
                     ),
@@ -167,6 +167,7 @@ class Topbar extends StatelessWidget {
                       child: IconButton(
                         icon: const Icon(Icons.arrow_forward, color: Color(0xFFFAE3C5)),
                         onPressed: () => Navigator.pop(context),
+                        iconSize: 65,
                       ),
                     ),
                   ),

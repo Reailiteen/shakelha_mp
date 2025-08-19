@@ -67,6 +67,7 @@ flutter:
     - lib/data/words/validWords.txt
     - lib/data/words/validWords.json
     - lib/data/ui/game_bg_wooden.png
+    - lib/data/ui/topbar_bg.jpeg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
 
