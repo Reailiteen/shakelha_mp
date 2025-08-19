@@ -5,6 +5,8 @@ import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+// Import board.dart to access word validation classes
+import 'package:mp_tictactoe/models/board.dart';
 
 // Grid cell widget for responsive board tiles
 class GridCell extends StatelessWidget {
@@ -59,8 +61,16 @@ class GridCell extends StatelessWidget {
   }
 }
 
-class BoardUI extends StatelessWidget {
+class BoardUI extends StatefulWidget {
   const BoardUI({Key? key}) : super(key: key);
+  
+  @override
+  State<BoardUI> createState() => _BoardUIState();
+}
+
+class _BoardUIState extends State<BoardUI> {
+  late double _cellSize;
+  
   @override
   Widget build(BuildContext context) {
     final passPlay = context.watch<PassPlayProvider>();
@@ -83,8 +93,16 @@ class BoardUI extends StatelessWidget {
       ),
     );
 
+    // Calculate cell size for outline generation
+    // Use simpler calculation that matches GridView layout
+    // GridView has 15 cells with 1px spacing between them
+    // Total grid width = 15 * cellSize + 14 * 1px spacing
+    // So: 15 * cellSize + 14 = boardSize - 36 (border + padding)
+    // Solving: 15 * cellSize = boardSize - 50
+    // cellSize = (boardSize - 50) / 15
+    _cellSize = (boardSize - 50) / 15;
+    
     return Center(
-
       child: SizedBox(
         width: boardSize,
         height: boardSize,
@@ -107,220 +125,269 @@ class BoardUI extends StatelessWidget {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(2.0),
-                child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 15,
-                    childAspectRatio: 1.0,
-                    crossAxisSpacing: 1,
-                    mainAxisSpacing: 1,
-                  ),
-                  itemCount: 225,
-                  itemBuilder: (context, index) {
-                    final row = index ~/ 15;
-                    final col = index % 15;
-                    final positionKey = '$row-$col';
-                    final pos = Position(row: row, col: col);
-                    final existingTile = passPlay.room?.board.getTileAt(pos);
-                    final pending = passPlay.pendingPlacements.firstWhere(
-                      (p) => p.position == pos,
-                      orElse: () => PlacedTile(tile: Tile(letter: ''), position: pos),
-                    );
-                    final hasPending = pending.tile.letter.isNotEmpty;
-                    final displayLetter = existingTile?.letter ?? (hasPending ? pending.tile.letter : '');
-                    final displayPoints = existingTile?.value ?? (hasPending ? pending.tile.value : 0);
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Get exact grid dimensions for precise outline positioning
+                    final gridWidth = constraints.maxWidth;
+                    final gridHeight = constraints.maxHeight;
+                    final actualCellSize = (gridWidth - 14) / 15; // 14px total spacing between 15 cells
                     
-                    final bool isSpecial = passPlay.room?.board.isSpecialPosition(pos) ?? false;
-                    Color? specialColor;
-                    String? multiplierText;
+                    // Update cell size for outline generation
+                    _cellSize = actualCellSize;
                     
-                    if (isSpecial) {
-                      // Get the actual multiplier to determine styling
-                      final multiplier = passPlay.room?.board.getMultiplierAt(pos);
-                      if (multiplier != null) {
-                        if (multiplier.isWordMultiplier) {
-                          // Word multipliers get dark blue color
-                          specialColor = const Color(0xFF1E3A8A); // Dark blue
-                          multiplierText = 'x${multiplier.value}';
-                        } else {
-                          // Letter multipliers get neon yellow color
-                          specialColor = const Color(0xFFFFD700); // Neon yellow
-                          multiplierText = 'x${multiplier.value}';
-                        }
-                      }
-                    } else if (row == 7 && col == 7) {
-                      // Center square gets green color
-                      specialColor = const Color(0xFF4CAF50); // Green
-                    }
-                    
-                    return DragTarget<Object>(
-                      onWillAccept: (data) {
-                        if (!passPlay.isMyTurn) return false;
-                        final isEmpty = (existingTile == null) && !hasPending;
-                        return (data is Tile || data is PlacedTile) && isEmpty;
-                      },
-                      onAccept: (data) {
-                        if (data is Tile) {
-                          passPlay.placeDraggedTile(data, pos);
-                        } else if (data is PlacedTile) {
-                          passPlay.movePendingTile(data.position, pos);
-                        }
-                      },
-                      builder: (context, candidate, rejected) {
-                        final isHovering = candidate.isNotEmpty;
-                        final cellContent = Container(
-                          decoration: BoxDecoration(
-                            color: isSpecial 
-                                ? (specialColor ?? const Color(0xFFFFECD6))
-                                : Colors.transparent,
-                            border: Border.all(
-                              color: const Color(0xFFAB8756),
-                              width: 1,
-                            ),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                          child: isSpecial && multiplierText != null 
-                              ? Center(
-                                  child: Text(
-                                    multiplierText!,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      shadows: [
-                                        Shadow(
-                                          offset: const Offset(1, 1),
-                                          blurRadius: 2,
-                                          color: Colors.black.withOpacity(0.8),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                              : null,
+                    return GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 15,
+                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 1,
+                        mainAxisSpacing: 1,
+                      ),
+                      itemCount: 225,
+                      itemBuilder: (context, index) {
+                        final row = index ~/ 15;
+                        final col = index % 15;
+                        final positionKey = '$row-$col';
+                        final pos = Position(row: row, col: col);
+                        final existingTile = passPlay.room?.board.getTileAt(pos);
+                        final pending = passPlay.pendingPlacements.firstWhere(
+                          (p) => p.position == pos,
+                          orElse: () => PlacedTile(tile: Tile(letter: ''), position: pos),
                         );
-
-                        Widget tileVisual(String letter, int points, double size) => Container(
-                              width: size,
-                              height: size,
+                        final hasPending = pending.tile.letter.isNotEmpty;
+                        final displayLetter = existingTile?.letter ?? (hasPending ? pending.tile.letter : '');
+                        final displayPoints = existingTile?.value ?? (hasPending ? pending.tile.value : 0);
+                        
+                        final bool isSpecial = passPlay.room?.board.isSpecialPosition(pos) ?? false;
+                        Color? specialColor;
+                        String? multiplierText;
+                        
+                        if (isSpecial) {
+                          // Get the actual multiplier to determine styling
+                          final multiplier = passPlay.room?.board.getMultiplierAt(pos);
+                          if (multiplier != null) {
+                            if (multiplier.isWordMultiplier) {
+                              // Word multipliers get dark blue color
+                              specialColor = const Color(0xFF1E3A8A); // Dark blue
+                              multiplierText = 'x${multiplier.value}';
+                            } else {
+                              // Letter multipliers get neon yellow color
+                              specialColor = const Color(0xFFFFD700); // Neon yellow
+                              multiplierText = 'x${multiplier.value}';
+                            }
+                          }
+                        } else if (row == 7 && col == 7) {
+                          // Center square gets green color
+                          specialColor = const Color(0xFF4CAF50); // Green
+                        }
+                        
+                        // Check if this position is part of any validated words for visual feedback
+                        final wordsAtPosition = passPlay.validatedWords.where((word) =>
+                          word.positions.any((wordPos) => wordPos.row == row && wordPos.col == col) &&
+                          // Only show feedback for words involving newly placed tiles
+                          word.positions.any((pos) =>
+                            passPlay.pendingPlacements.any((placement) => placement.position == pos)
+                          )
+                        ).toList();
+                        
+                        final hasValidWord = wordsAtPosition.any((w) => w.status == WordValidationStatus.valid);
+                        final hasInvalidWord = wordsAtPosition.any((w) => w.status == WordValidationStatus.invalid);
+                        
+                        // OVERRIDE: Check Scrabble placement rules (L-shape prevention)
+                        // Even if individual words are valid, L-shaped placements are invalid
+                        bool placementFollowsScrabbleRules = true;
+                        if (passPlay.pendingPlacements.isNotEmpty) {
+                          // Check if current placement follows Scrabble rules
+                          placementFollowsScrabbleRules = passPlay.areCurrentWordsValid();
+                        }
+                        
+                        return DragTarget<Object>(
+                          onWillAccept: (data) {
+                            if (!passPlay.isMyTurn) return false;
+                            final isEmpty = (existingTile == null) && !hasPending;
+                            return (data is Tile || data is PlacedTile) && isEmpty;
+                          },
+                          onAccept: (data) {
+                            if (data is Tile) {
+                              passPlay.placeDraggedTile(data, pos);
+                            } else if (data is PlacedTile) {
+                              passPlay.movePendingTile(data.position, pos);
+                            }
+                          },
+                          builder: (context, candidate, rejected) {
+                            final isHovering = candidate.isNotEmpty;
+                            final cellContent = Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.25),
-                                    blurRadius: 3,
-                                    offset: const Offset(0, 1.5),
-                                  ),
-                                ],
+                                color: isSpecial 
+                                    ? (specialColor ?? const Color(0xFFFFECD6))
+                                    : Colors.transparent,
+                                border: Border.all(
+                                  color: _getCellBorderColor(hasValidWord, hasInvalidWord, placementFollowsScrabbleRules, const Color(0xFFAB8756)),
+                                  width: _getCellBorderWidth(hasValidWord, hasInvalidWord, placementFollowsScrabbleRules),
+                                ),
+                                borderRadius: BorderRadius.circular(2),
                               ),
-                              child: Stack(children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEEBD5C),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.all(1),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [Color(0xFFF7D286), Color(0xFF664C18)],
-                                      stops: [0.8, 1.0],
-                                    ),
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                ),
-                                Container(
-                                  height: size * 0.3,
-                                  margin: const EdgeInsets.all(1),
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [Color(0xFFFFF1D5), Color(0xFFF7D286)],
-                                    ),
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(7),
-                                      topRight: Radius.circular(7),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.fromLTRB(1, 3, 1, 1),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF7D286),
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                ),
-                                Center(
-                                  child: Text(
-                                    letter,
-                                    style: GoogleFonts.jomhuria(
-                                      textStyle: TextStyle(
-                                        color: const Color(0xFF50271A),
-                                        fontSize: size * 1.2,
-                                        fontWeight: FontWeight.w800,
-                                        height: 0.4,
+                              child: isSpecial && multiplierText != null 
+                                  ? Center(
+                                      child: Text(
+                                        multiplierText!,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          shadows: [
+                                            Shadow(
+                                              offset: const Offset(1, 1),
+                                              blurRadius: 2,
+                                              color: Colors.black.withOpacity(0.8),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                    textDirection: TextDirection.rtl,
-                                  ),
-                                ),
-                                Positioned(
-                                  right: size * 0.07,
-                                  bottom: size * 0.03,
-                                  child: Text(
-                                    points.toString(),
-                                    style: GoogleFonts.jomhuria(
-                                      textStyle: TextStyle(
-                                        color: const Color(0xFF50271A),
-                                        fontSize: size * 0.5,
-                                        fontWeight: FontWeight.w800,
-                                        height: 0.4,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ]),
+                                    )
+                                  : null,
                             );
 
-                        Widget stack = Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            cellContent,
-                            if (displayLetter.isNotEmpty)
-                              Center(child: FractionallySizedBox(widthFactor: 0.9, heightFactor: 0.9, child: tileVisual(displayLetter, displayPoints, 20))),
-                            if (isHovering)
-                              Container(color: Colors.yellow.withOpacity(0.2)),
-                          ],
-                        );
+                            Widget tileVisual(String letter, int points, double size) => Container(
+                                  width: size,
+                                  height: size,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(3), // Reduced from 8 to 3 for less rounded tiles
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.25),
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1.5),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEEBD5C),
+                                        borderRadius: BorderRadius.circular(2), // Reduced from 5 to 2
+                                      ),
+                                    ),
+                                    Container(
+                                      margin: const EdgeInsets.all(1),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [Color(0xFFF7D286), Color(0xFF664C18)],
+                                          stops: [0.8, 1.0],
+                                        ),
+                                        borderRadius: BorderRadius.circular(3), // Reduced from 7 to 3
+                                      ),
+                                    ),
+                                    Container(
+                                      height: size * 0.3,
+                                      margin: const EdgeInsets.all(1),
+                                      decoration: const BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [Color(0xFFFFF1D5), Color(0xFFF7D286)],
+                                        ),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(3), // Reduced from 7 to 3
+                                          topRight: Radius.circular(3), // Reduced from 7 to 3
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      margin: const EdgeInsets.fromLTRB(1, 3, 1, 1),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF7D286),
+                                        borderRadius: BorderRadius.circular(3), // Reduced from 7 to 3
+                                      ),
+                                    ),
+                                    Center(
+                                      child: Text(
+                                        letter,
+                                        style: GoogleFonts.jomhuria(
+                                          textStyle: TextStyle(
+                                            color: const Color(0xFF50271A),
+                                            fontSize: size * 1.1,
+                                            fontWeight: FontWeight.w400, // Reduced from 800 to 600
+                                            height: 0.4,
+                                          ),
+                                        ),
+                                        textDirection: TextDirection.rtl,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: size * 0.06,
+                                      bottom: size * 0.035,
+                                      child: Text(
+                                        points.toString(),
+                                        style: GoogleFonts.jomhuria(
+                                          textStyle: TextStyle(
+                                            color: const Color(0xFF50271A),
+                                            fontSize: size * 0.5,
+                                            fontWeight: FontWeight.w500, // Reduced from 800 to 600
+                                            height: 0.4,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ]),
+                                );
 
-                        if (hasPending && passPlay.isMyTurn) {
-                          return Draggable<PlacedTile>(
-                            data: pending,
-                            feedback: Material(
-                              color: Colors.transparent,
-                              child: SizedBox(width: 28, height: 28, child: tileVisual(displayLetter, displayPoints, 28)),
-                            ),
-                            childWhenDragging: Container(),
-                            onDragEnd: (details) {},
-                            child: GestureDetector(
-                              onDoubleTap: () {
-                                passPlay.removePendingPlacement(pos);
-                              },
-                              child: stack,
-                            ),
-                          );
-                        }
-                        return stack;
+                            Widget stack = Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                cellContent,
+                                if (displayLetter.isNotEmpty)
+                                  Center(child: FractionallySizedBox(widthFactor: 0.9, heightFactor: 0.9, child: tileVisual(displayLetter, displayPoints, 24.4))), // Increased from 22 to 26.4 (1.2x larger)
+                                if (isHovering)
+                                  Container(color: Colors.yellow.withOpacity(0.2)),
+                              ],
+                            );
+
+                            if (hasPending && passPlay.isMyTurn) {
+                              return Draggable<PlacedTile>(
+                                data: pending,
+                                feedback: Material(
+                                  color: Colors.transparent,
+                                  child: SizedBox(width: 28, height: 28, child: tileVisual(displayLetter, displayPoints, 28)),
+                                ),
+                                childWhenDragging: Container(),
+                                onDragEnd: (details) {},
+                                child: GestureDetector(
+                                  onDoubleTap: () {
+                                    passPlay.removePendingPlacement(pos);
+                                  },
+                                  child: stack,
+                                ),
+                              );
+                            }
+                            return stack;
+                          },
+                        );
                       },
                     );
                   },
                 ),
               ),
             ),
+            
+            // Word validation overlay using positioned containers (much more reliable than CustomPaint)
+            if (passPlay.wordValidationEnabled)
+              ..._generateWordOverlays(passPlay.validatedWords, passPlay.pendingPlacements, _cellSize),
+            
+            // Debug grid overlay (disabled)
+            if (false) // Set to true to enable debug grid
+              IgnorePointer(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: DebugGridPainter(
+                    cellSize: _cellSize,
+                    boardSize: boardSize,
+                  ),
+                ),
+              ),
+            
             // Dotted ribbon above the border
             Positioned.fill(
               child: LayoutBuilder(
@@ -364,9 +431,175 @@ class BoardUI extends StatelessWidget {
                 },
               ),
             ),
+            
+            // Center tile star indicator (only show when center is empty)
+            if (passPlay.room?.board.getTileAt(Position(row: 7, col: 7)) == null &&
+                !passPlay.pendingPlacements.any((p) => p.position == Position(row: 7, col: 7)))
+              Positioned(
+                left: (boardSize - 24) / 2, // Center the star (24 is star size)
+                top: (boardSize - 24) / 2,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF4CAF50), // Green color
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.star,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+  
+  /// Generate positioned container overlays for word validation
+  List<Widget> _generateWordOverlays(List<ValidatedWord> words, List<PlacedTile> pendingPlacements, double cellSize) {
+    // Only show overlays for words that involve newly placed tiles
+    final relevantWords = words.where((word) {
+      return word.positions.any((pos) =>
+        pendingPlacements.any((placement) => placement.position == pos)
+      );
+    }).toList();
+    
+    return relevantWords.map((word) {
+      // Calculate the bounding rectangle for the word
+      final positions = word.positions;
+      if (positions.isEmpty) return const SizedBox.shrink();
+      
+      // Sort positions to find bounds
+      final sortedByRow = List<Position>.from(positions)..sort((a, b) => a.row.compareTo(b.row));
+      final sortedByCol = List<Position>.from(positions)..sort((a, b) => a.col.compareTo(b.col));
+      
+      final minRow = sortedByRow.first.row;
+      final maxRow = sortedByRow.last.row;
+      final minCol = sortedByCol.first.col;
+      final maxCol = sortedByCol.last.col;
+      
+      // Calculate exact positions using same logic as GridView
+      // Account for container padding and border
+      const double containerPadding = 2.0;
+      const double containerBorder = 16.0;
+      const double totalOffset = containerPadding + containerBorder;
+      
+      // GridView uses 1px spacing between cells
+      const double gridSpacing = 1.0;
+      
+      // Common calculations (exactly as in debugging version)
+      final top = totalOffset + minRow * (cellSize + gridSpacing);
+      final height = (maxRow - minRow + 1) * cellSize + (maxRow - minRow) * gridSpacing;
+      final width = (maxCol - minCol + 1) * cellSize + (maxCol - minCol) * gridSpacing;
+      
+      // Use ONLY Option 2 (Blue) - the one that aligned perfectly
+      // This is the exact calculation from the blue overlay that worked
+      final left = totalOffset + (14 - maxCol) * (cellSize + gridSpacing);
+      
+      return Positioned(
+        left: left,
+        top: top,
+        width: width,
+        height: height,
+        child: IgnorePointer(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: word.feedbackColor,
+                width: 2.0, // Reduced from 3.0 to 2.0
+                strokeAlign: BorderSide.strokeAlignCenter, // Center the outline between tiles
+              ),
+              borderRadius: BorderRadius.circular(2.0), // Reduced from 6.0 to 2.0 for less rounded corners
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+  
+  /// Get enhanced border color based on word validation status and Scrabble placement rules
+  Color _getCellBorderColor(bool hasValidWord, bool hasInvalidWord, bool placementFollowsScrabbleRules, Color defaultColor) {
+    // If placement violates Scrabble rules (L-shape, etc.), always show red
+    if (!placementFollowsScrabbleRules) {
+      return const Color(0xFFF44336).withOpacity(0.6); // Red for rule violations
+    }
+    
+    // Otherwise use normal word validation colors
+    if (hasValidWord && hasInvalidWord) {
+      return const Color(0xFFFFC107).withOpacity(0.3); // Mixed validation - amber
+    } else if (hasValidWord) {
+      return const Color(0xFF4CAF50).withOpacity(0.2); // Valid - green tint
+    } else if (hasInvalidWord) {
+      return const Color(0xFFF44336).withOpacity(0.2); // Invalid - red tint
+    }
+    return defaultColor;
+  }
+  
+  /// Get enhanced border width based on word validation status and Scrabble placement rules
+  double _getCellBorderWidth(bool hasValidWord, bool hasInvalidWord, bool placementFollowsScrabbleRules) {
+    // If placement violates Scrabble rules, use thicker border to emphasize
+    if (!placementFollowsScrabbleRules) {
+      return 2.0; // Thicker for rule violations
+    }
+    
+    // Otherwise use normal validation widths
+    if (hasValidWord || hasInvalidWord) {
+      return 1.5; // Slightly thicker for validated tiles
+    }
+    return 1.0; // Default width
+  }
+}
+
+/// Debug painter to visualize grid alignment
+class DebugGridPainter extends CustomPainter {
+  final double cellSize;
+  final double boardSize;
+  
+  const DebugGridPainter({
+    required this.cellSize,
+    required this.boardSize,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Use same offset calculation as outline generation
+    const double containerPadding = 2.0;
+    const double containerBorder = 16.0;
+    const double totalOffset = containerPadding + containerBorder;
+    
+    final paint = Paint()
+      ..color = Colors.red.withOpacity(0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    
+    // Draw grid lines to verify alignment
+    for (int i = 0; i <= 15; i++) {
+      final x = totalOffset + i * (cellSize + 1); // +1 for grid spacing
+      final y = totalOffset + i * (cellSize + 1);
+      
+      // Vertical lines
+      canvas.drawLine(
+        Offset(x, totalOffset),
+        Offset(x, totalOffset + 15 * (cellSize + 1) - 1),
+        paint,
+      );
+      
+      // Horizontal lines
+      canvas.drawLine(
+        Offset(totalOffset, y),
+        Offset(totalOffset + 15 * (cellSize + 1) - 1, y),
+        paint,
+      );
+    }
+  }
+  
+  @override
+  bool shouldRepaint(DebugGridPainter oldDelegate) {
+    return cellSize != oldDelegate.cellSize || boardSize != oldDelegate.boardSize;
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:mp_tictactoe/models/room.dart';
 import 'package:mp_tictactoe/models/player.dart';
 import 'package:mp_tictactoe/models/board.dart';
 import 'package:mp_tictactoe/models/letterDistribution.dart';
-
 import 'package:mp_tictactoe/models/tile.dart';
 import 'package:mp_tictactoe/models/position.dart';
 import 'package:mp_tictactoe/models/move.dart';
@@ -22,6 +22,10 @@ class PassPlayProvider extends ChangeNotifier {
   String? _successMessage;
   List<String> _lastSubmittedWords = const [];
   
+  // Word validation state
+  List<ValidatedWord> _validatedWords = [];
+  bool _wordValidationEnabled = true;
+  
   Room? get room => _room;
   String? get currentPlayerId => _currentPlayerId;
   List<Tile> get selectedTiles => _selectedTiles;
@@ -31,6 +35,10 @@ class PassPlayProvider extends ChangeNotifier {
   String? get successMessage => _successMessage;
   List<String> get lastSubmittedWords => _lastSubmittedWords;
   int get consecutivePassCount => _room?.consecutivePassCount ?? 0;
+  
+  // Word validation getters
+  List<ValidatedWord> get validatedWords => _validatedWords;
+  bool get wordValidationEnabled => _wordValidationEnabled;
   
   Player? get currentPlayer {
     if (_room == null || _currentPlayerId == null) return null;
@@ -125,6 +133,7 @@ class PassPlayProvider extends ChangeNotifier {
     _clearMessages();
     ArabicDictionary.instance.preload();
     notifyListeners();
+    _updateWordValidation();
   }
   
   /// Starts placing tiles mode
@@ -146,6 +155,7 @@ class PassPlayProvider extends ChangeNotifier {
     _selectedTiles.clear();
     _clearMessages();
     notifyListeners();
+    _updateWordValidation();
   }
 
   /// Selects a tile from the player's rack
@@ -181,6 +191,7 @@ class PassPlayProvider extends ChangeNotifier {
     ));
     _clearMessages();
     notifyListeners();
+    _updateWordValidation();
     return true;
   }
 
@@ -205,6 +216,7 @@ class PassPlayProvider extends ChangeNotifier {
     ));
     _clearMessages();
     notifyListeners();
+    _updateWordValidation();
   }
 
   /// Removes a pending placement or (no-op) for committed tiles
@@ -222,6 +234,7 @@ class PassPlayProvider extends ChangeNotifier {
       // Return tile to rack
       _returnToCurrentPlayerRack(pt.tile);
       notifyListeners();
+      _updateWordValidation();
     } else {
       print('[PassPlayProvider] No pending placement found at position: $position');
     }
@@ -229,6 +242,8 @@ class PassPlayProvider extends ChangeNotifier {
 
   /// Places a dragged tile onto the board (drag-and-drop support)
   void placeDraggedTile(Tile tile, Position position, {bool removeFromRack = true}) {
+    print('[PassPlayProvider] placeDraggedTile called: ${tile.letter} -> (${position.row},${position.col})');
+    
     if (!isMyTurn) {
       _setErrorMessage('ليس دورك');
       return;
@@ -248,8 +263,14 @@ class PassPlayProvider extends ChangeNotifier {
       tile: tile.copyWith(isNewlyPlaced: true, isOnBoard: true, ownerId: _currentPlayerId, position: position),
       position: position,
     ));
+    
+    print('[PassPlayProvider] Pending placements now: ${_pendingPlacements.length}');
     _clearMessages();
     notifyListeners();
+    
+    print('[PassPlayProvider] Calling _updateWordValidation...');
+    _updateWordValidation();
+    print('[PassPlayProvider] _updateWordValidation completed');
   }
 
   /// Exchanges selected tiles back to the bag and draws new ones
@@ -319,6 +340,134 @@ class PassPlayProvider extends ChangeNotifier {
   /// Validate a word using the dictionary (direction not needed for lookup)
   bool validateWord(String word, Position position, String direction) {
     return ArabicDictionary.instance.containsWord(word);
+  }
+  
+  /// Real-time word validation update - uses comprehensive Scrabble rules
+  void _updateWordValidation() {
+    print('[PassPlayProvider] _updateWordValidation called');
+    print('[PassPlayProvider]   wordValidationEnabled: $_wordValidationEnabled');
+    print('[PassPlayProvider]   room != null: ${_room != null}');
+    print('[PassPlayProvider]   pendingPlacements.length: ${_pendingPlacements.length}');
+    
+    if (!_wordValidationEnabled || _room == null) {
+      print('[PassPlayProvider] Clearing validated words (validation disabled or no room)');
+      _validatedWords = [];
+      notifyListeners();
+      return;
+    }
+    
+    // Always run validation to show real-time feedback, even without pending placements
+    print('[PassPlayProvider] Processing validation with ${_pendingPlacements.length} pending placements');
+    
+    // Get tile at position function that includes pending placements
+    String? getTileAt(Position position) {
+      // Check committed tiles first
+      final existingTile = _room?.board.getTileAt(position);
+      if (existingTile != null) {
+        return existingTile.letter;
+      }
+      
+      // Check pending placements
+      final pending = _pendingPlacements.firstWhere(
+        (p) => p.position == position,
+        orElse: () => PlacedTile(tile: Tile(letter: ''), position: position),
+      );
+      
+      return pending.tile.letter.isEmpty ? null : pending.tile.letter;
+    }
+    
+    // Convert pending placements to tiles for Scrabble rule validation
+    final pendingTiles = _pendingPlacements.map((p) => p.tile.copyWith(position: p.position)).toList();
+    
+    // Use board's enhanced validation method with pending tiles context
+    final allWords = _room!.board.validateAllWords(
+      getTileAt: getTileAt, 
+      pendingTiles: pendingTiles.isNotEmpty ? pendingTiles : null
+    );
+    print('[PassPlayProvider] Found ${allWords.length} total words on board');
+    
+    // Only keep words that involve newly placed tiles (if any)
+    if (_pendingPlacements.isNotEmpty) {
+      _validatedWords = allWords.where((word) {
+        final hasNewTile = word.positions.any((pos) =>
+          _pendingPlacements.any((placement) => 
+            placement.position == pos
+          )
+        );
+        if (hasNewTile) {
+          print('[PassPlayProvider]   Word "${word.text}" (${word.status.name}) involves new tiles: ${word.positions.map((p) => '(${p.row},${p.col})').join(', ')}');
+        }
+        return hasNewTile;
+      }).toList();
+    } else {
+      // No pending placements, clear validated words
+      _validatedWords = [];
+    }
+    
+    print('[PassPlayProvider] Final validated words: ${_validatedWords.length}');
+    for (final word in _validatedWords) {
+      print('[PassPlayProvider]   "${word.text}": ${word.status.name}');
+    }
+    
+    notifyListeners();
+    
+    // Force an immediate UI update
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyListeners();
+    });
+  }
+  
+  /// Check if current pending words are all valid AND follow Scrabble placement rules
+  bool areCurrentWordsValid() {
+    if (_pendingPlacements.isEmpty) return false;
+    
+    // FIRST: Check Scrabble placement rules (L-shape prevention)
+    final pendingTiles = _pendingPlacements.map((p) => p.tile.copyWith(position: p.position)).toList();
+    
+    // Check continuity (prevents L-shaped placements)
+    if (_room?.board.areTilesContinuous(pendingTiles) != true) {
+      print('[PassPlayProvider] Placement fails continuity check (L-shape or gaps)');
+      return false;
+    }
+    
+    // SECOND: Check dictionary validation for all words
+    for (final word in _validatedWords) {
+      final hasNewlyPlacedTile = word.positions.any((pos) =>
+        _pendingPlacements.any((placement) => placement.position == pos)
+      );
+      if (hasNewlyPlacedTile && word.status != WordValidationStatus.valid) {
+        print('[PassPlayProvider] Word "${word.text}" is invalid');
+        return false;
+      }
+    }
+    
+    print('[PassPlayProvider] All placement rules and word validations passed');
+    return true;
+  }
+  
+  /// Get word validation summary for UI feedback
+  String getWordValidationSummary() {
+    if (_validatedWords.isEmpty) return 'لا توجد كلمات';
+    
+    final validCount = _validatedWords.where((w) => w.status == WordValidationStatus.valid).length;
+    final invalidCount = _validatedWords.where((w) => w.status == WordValidationStatus.invalid).length;
+    final pendingCount = _validatedWords.where((w) => w.status == WordValidationStatus.pending).length;
+    
+    if (invalidCount > 0) {
+      return 'كلمات غير صحيحة: $invalidCount';
+    } else if (pendingCount > 0) {
+      return 'جاري التحقق من الكلمات...';
+    } else if (validCount > 0) {
+      return 'كلمات صحيحة: $validCount';
+    }
+    
+    return 'لا توجد كلمات';
+  }
+  
+  /// Toggle word validation feature
+  void toggleWordValidation() {
+    _wordValidationEnabled = !_wordValidationEnabled;
+    _updateWordValidation();
   }
 
   /// Approximate word score (sum of letter values; multipliers ignored here)
@@ -404,6 +553,7 @@ class PassPlayProvider extends ChangeNotifier {
       isNewWord: pt.isNewWord,
     );
     notifyListeners();
+    _updateWordValidation();
   }
 
   /// Validate and submit the current move locally (no sockets)
@@ -428,9 +578,20 @@ class PassPlayProvider extends ChangeNotifier {
 
     // Centralized validation via Board
     final originalBoard = _room!.board;
+    print('[PassPlayProvider] Original board isFirstTurn: ${originalBoard.isFirstTurn}');
+    
+    // Create temporary board for validation
     final tempBoard = Board.fromJson(originalBoard.toJson());
     tempBoard.isFirstTurn = originalBoard.isFirstTurn;
+    print('[PassPlayProvider] Temp board isFirstTurn after copy: ${tempBoard.isFirstTurn}');
+    
     final newlyPlaced = _pendingPlacements.map((pt) => pt.tile.copyWith(position: pt.position)).toList();
+    print('[PassPlayProvider] Validating ${newlyPlaced.length} newly placed tiles:');
+    for (int i = 0; i < newlyPlaced.length; i++) {
+      final tile = newlyPlaced[i];
+      print('[PassPlayProvider]   [$i] ${tile.letter} at (${tile.position!.row},${tile.position!.col})');
+    }
+    
     final (ok, msg, points, words) = tempBoard.validateAndScoreMove(newlyPlaced);
     
     // Debug logging for score calculation
@@ -444,6 +605,12 @@ class PassPlayProvider extends ChangeNotifier {
       return false;
     }
     
+    // Additional validation with word validation if enabled
+    if (_wordValidationEnabled && !areCurrentWordsValid()) {
+      _setErrorMessage('توجد كلمات غير صحيحة');
+      return false;
+    }
+    
     // Additional debugging for points
     print('[PassPlayProvider] Points calculated: $points');
     print('[PassPlayProvider] Words formed: $words');
@@ -454,7 +621,12 @@ class PassPlayProvider extends ChangeNotifier {
       final committedTile = pt.tile.copyWith(isOnBoard: true, isNewlyPlaced: false, ownerId: _currentPlayerId, position: pt.position);
       committedBoard.placeTile(committedTile, pt.position);
     }
-    committedBoard.isFirstTurn = false;
+    
+    // Complete first turn if this was the first move
+    if (committedBoard.isFirstTurn) {
+      print('[PassPlayProvider] Completing first turn');
+      committedBoard.completeFirstTurn();
+    }
 
     // Update score and refill up to 7 tiles
     final playerIdx = _room!.players.indexWhere((p) => p.id == _currentPlayerId);
@@ -551,6 +723,7 @@ class PassPlayProvider extends ChangeNotifier {
       _currentPlayerId = _room!.currentPlayerId ?? _room!.players[_room!.currentPlayerIndex].id;
     }
     notifyListeners();
+    _updateWordValidation();
   }
   
   /// Undo current pending placements (does not undo committed moves)
@@ -563,6 +736,7 @@ class PassPlayProvider extends ChangeNotifier {
     _selectedTiles.clear();
     _isPlacingTiles = false;
     notifyListeners();
+    _updateWordValidation();
   }
 
   /// Check for end-of-game conditions
@@ -579,6 +753,7 @@ class PassPlayProvider extends ChangeNotifier {
     _pendingPlacements.clear();
     _isPlacingTiles = false;
     _clearMessages();
+    _validatedWords = [];
     notifyListeners();
   }
   

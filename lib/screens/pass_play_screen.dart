@@ -4,6 +4,8 @@ import 'package:mp_tictactoe/provider/game_provider.dart';
 import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
 import 'package:mp_tictactoe/widgets/playerUI.dart';
 import 'package:provider/provider.dart';
+// Import board.dart to access word validation classes
+import 'package:mp_tictactoe/models/board.dart';
 
 import 'package:mp_tictactoe/widgets/topbar.dart';
 import 'package:mp_tictactoe/widgets/enemyUI.dart';
@@ -245,7 +247,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
           return Column(
             children: [
               
-              // Top Bar - 10% of screen height
+              // Top Bar with word validation status - 10% of screen height
               SizedBox(
                 height: constraints.maxHeight * 0.07,
                 child: Consumer<PassPlayProvider>(
@@ -258,7 +260,74 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                       final name = room.players[idx].nickname;
                       turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
                     }
-                    return Topbar(currentText: turnLabel);
+                    
+                    return Row(
+                      children: [
+                        Expanded(child: Topbar(currentText: turnLabel)),
+                        
+                        // Word validation toggle and status
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Validation status indicator
+                              if (passPlay.wordValidationEnabled && passPlay.validatedWords.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: _getValidationStatusColor(passPlay.validatedWords),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${passPlay.validatedWords.length}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              
+                              const SizedBox(width: 4),
+                              
+                              // Toggle button
+                              GestureDetector(
+                                onTap: () {
+                                  passPlay.toggleWordValidation();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        passPlay.wordValidationEnabled
+                                          ? 'تم تفعيل التحقق من الكلمات'
+                                          : 'تم إلغاء التحقق من الكلمات',
+                                      ),
+                                      duration: const Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: passPlay.wordValidationEnabled
+                                      ? const Color(0xFF4CAF50)
+                                      : Colors.grey[600],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    passPlay.wordValidationEnabled
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
                   },
                 ),
               ),
@@ -334,5 +403,19 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
         },
       ),
     );
+  }
+  
+  /// Get validation status color based on word states
+  Color _getValidationStatusColor(List<ValidatedWord> words) {
+    final hasInvalid = words.any((w) => w.status == WordValidationStatus.invalid);
+    final hasPending = words.any((w) => w.status == WordValidationStatus.pending);
+    
+    if (hasInvalid) {
+      return const Color(0xFFF44336); // Red
+    } else if (hasPending) {
+      return const Color(0xFFFFC107); // Amber
+    } else {
+      return const Color(0xFF4CAF50); // Green
+    }
   }
 }
