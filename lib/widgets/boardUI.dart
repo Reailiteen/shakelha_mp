@@ -193,14 +193,6 @@ class _BoardUIState extends State<BoardUI> {
                         final hasValidWord = wordsAtPosition.any((w) => w.status == WordValidationStatus.valid);
                         final hasInvalidWord = wordsAtPosition.any((w) => w.status == WordValidationStatus.invalid);
                         
-                        // OVERRIDE: Check Scrabble placement rules (L-shape prevention)
-                        // Even if individual words are valid, L-shaped placements are invalid
-                        bool placementFollowsScrabbleRules = true;
-                        if (passPlay.pendingPlacements.isNotEmpty) {
-                          // Check if current placement follows Scrabble rules
-                          placementFollowsScrabbleRules = passPlay.areCurrentWordsValid();
-                        }
-                        
                         return DragTarget<Object>(
                           onWillAccept: (data) {
                             if (!passPlay.isMyTurn) return false;
@@ -222,8 +214,8 @@ class _BoardUIState extends State<BoardUI> {
                                     ? (specialColor ?? const Color(0xFFFFECD6))
                                     : Colors.transparent,
                                 border: Border.all(
-                                  color: _getCellBorderColor(hasValidWord, hasInvalidWord, placementFollowsScrabbleRules, const Color(0xFFAB8756)),
-                                  width: _getCellBorderWidth(hasValidWord, hasInvalidWord, placementFollowsScrabbleRules),
+                                  color: _getCellBorderColor(hasValidWord, hasInvalidWord, const Color(0xFFAB8756)),
+                                  width: _getCellBorderWidth(hasValidWord, hasInvalidWord),
                                 ),
                                 borderRadius: BorderRadius.circular(2),
                               ),
@@ -470,6 +462,11 @@ class _BoardUIState extends State<BoardUI> {
     }).toList();
     
     return relevantWords.map((word) {
+      // Only show green outlines for valid words - no red outlines for invalid words
+      if (word.status != WordValidationStatus.valid) {
+        return const SizedBox.shrink();
+      }
+      
       // Calculate the bounding rectangle for the word
       final positions = word.positions;
       if (positions.isEmpty) return const SizedBox.shrink();
@@ -522,33 +519,18 @@ class _BoardUIState extends State<BoardUI> {
     }).toList();
   }
   
-  /// Get enhanced border color based on word validation status and Scrabble placement rules
-  Color _getCellBorderColor(bool hasValidWord, bool hasInvalidWord, bool placementFollowsScrabbleRules, Color defaultColor) {
-    // If placement violates Scrabble rules (L-shape, etc.), always show red
-    if (!placementFollowsScrabbleRules) {
-      return const Color(0xFFF44336).withOpacity(0.6); // Red for rule violations
-    }
-    
-    // Otherwise use normal word validation colors
-    if (hasValidWord && hasInvalidWord) {
-      return const Color(0xFFFFC107).withOpacity(0.3); // Mixed validation - amber
-    } else if (hasValidWord) {
+  /// Get enhanced border color based on word validation status
+  Color _getCellBorderColor(bool hasValidWord, bool hasInvalidWord, Color defaultColor) {
+    if (hasValidWord) {
       return const Color(0xFF4CAF50).withOpacity(0.2); // Valid - green tint
-    } else if (hasInvalidWord) {
-      return const Color(0xFFF44336).withOpacity(0.2); // Invalid - red tint
     }
+    // Don't show red borders for invalid words - only show green for valid words
     return defaultColor;
   }
   
-  /// Get enhanced border width based on word validation status and Scrabble placement rules
-  double _getCellBorderWidth(bool hasValidWord, bool hasInvalidWord, bool placementFollowsScrabbleRules) {
-    // If placement violates Scrabble rules, use thicker border to emphasize
-    if (!placementFollowsScrabbleRules) {
-      return 2.0; // Thicker for rule violations
-    }
-    
-    // Otherwise use normal validation widths
-    if (hasValidWord || hasInvalidWord) {
+  /// Get enhanced border width based on word validation status
+  double _getCellBorderWidth(bool hasValidWord, bool hasInvalidWord) {
+    if (hasValidWord) {
       return 1.5; // Slightly thicker for validated tiles
     }
     return 1.0; // Default width

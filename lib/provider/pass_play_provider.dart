@@ -25,6 +25,7 @@ class PassPlayProvider extends ChangeNotifier {
   // Word validation state
   List<ValidatedWord> _validatedWords = [];
   bool _wordValidationEnabled = true;
+  bool _hasValidationProblems = false; // Track validation problems for submit button styling
   
   Room? get room => _room;
   String? get currentPlayerId => _currentPlayerId;
@@ -39,6 +40,7 @@ class PassPlayProvider extends ChangeNotifier {
   // Word validation getters
   List<ValidatedWord> get validatedWords => _validatedWords;
   bool get wordValidationEnabled => _wordValidationEnabled;
+  bool get hasValidationProblems => _hasValidationProblems; // Getter for validation problems
   
   Player? get currentPlayer {
     if (_room == null || _currentPlayerId == null) return null;
@@ -352,6 +354,7 @@ class PassPlayProvider extends ChangeNotifier {
     if (!_wordValidationEnabled || _room == null) {
       print('[PassPlayProvider] Clearing validated words (validation disabled or no room)');
       _validatedWords = [];
+      _hasValidationProblems = false; // Clear validation problems
       notifyListeners();
       return;
     }
@@ -402,12 +405,18 @@ class PassPlayProvider extends ChangeNotifier {
     } else {
       // No pending placements, clear validated words
       _validatedWords = [];
+      _hasValidationProblems = false; // Clear validation problems when no pending placements
     }
     
     print('[PassPlayProvider] Final validated words: ${_validatedWords.length}');
     for (final word in _validatedWords) {
       print('[PassPlayProvider]   "${word.text}": ${word.status.name}');
     }
+    
+    // Update validation problems flag for submit button styling
+    _hasValidationProblems = _validatedWords.any((word) => 
+      word.status == WordValidationStatus.invalid
+    );
     
     notifyListeners();
     
