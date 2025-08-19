@@ -64,7 +64,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - lib/data/words/validWords.txt
     - lib/data/words/validWords.json
     - lib/data/ui/game_bg_wooden.png
     - lib/data/ui/topbar_bg.jpeg
