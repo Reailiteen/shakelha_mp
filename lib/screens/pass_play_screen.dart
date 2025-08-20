@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/provider/pass_play_provider.dart';
-import 'package:mp_tictactoe/provider/game_provider.dart';
-import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
-import 'package:mp_tictactoe/widgets/playerUI.dart';
+import 'package:shakelha_mp/provider/pass_play_provider.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
+import 'package:shakelha_mp/data/arabic_dictionary_loader.dart';
+import 'package:shakelha_mp/widgets/playerUI.dart';
 import 'package:provider/provider.dart';
 // Import board.dart to access word validation classes
-import 'package:mp_tictactoe/models/board.dart';
+import 'package:shakelha_mp/models/board.dart';
 
-import 'package:mp_tictactoe/widgets/topbar.dart';
-import 'package:mp_tictactoe/widgets/enemyUI.dart';
-import 'package:mp_tictactoe/widgets/gameBG.dart';
-import 'package:mp_tictactoe/widgets/boardUI.dart';
-import 'package:mp_tictactoe/models/tile.dart';
+import 'package:shakelha_mp/widgets/topbar.dart';
+import 'package:shakelha_mp/widgets/enemyUI.dart';
+import 'package:shakelha_mp/widgets/gameBG.dart';
+import 'package:shakelha_mp/widgets/boardUI.dart';
+import 'package:shakelha_mp/models/tile.dart';
 
 class PassPlayScreen extends StatefulWidget {
   static const routeName = '/new-pass-play';

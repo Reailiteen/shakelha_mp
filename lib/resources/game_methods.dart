@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/tile.dart';
+import 'package:shakelha_mp/models/tile.dart';
 
 class GameMethods {
   bool validateWordPlacement({

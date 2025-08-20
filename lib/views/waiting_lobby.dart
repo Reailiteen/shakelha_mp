@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mp_tictactoe/provider/room_data_provider.dart';
-import 'package:mp_tictactoe/resources/socket_methods.dart';
-import 'package:mp_tictactoe/widgets/game_page.dart';
-import 'package:mp_tictactoe/widgets/topbar.dart';
+import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/resources/socket_methods.dart';
+import 'package:shakelha_mp/widgets/game_page.dart';
+import 'package:shakelha_mp/widgets/topbar.dart';
 import 'package:provider/provider.dart';
 
 class WaitingLobby extends StatefulWidget {

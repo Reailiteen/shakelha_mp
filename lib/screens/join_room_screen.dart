@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/resources/socket_methods.dart';
-import 'package:mp_tictactoe/responsive/responsive.dart';
-import 'package:mp_tictactoe/widgets/custom_button.dart';
-import 'package:mp_tictactoe/widgets/custom_text.dart';
-import 'package:mp_tictactoe/widgets/custom_textfield.dart';
-import 'package:mp_tictactoe/widgets/game_page.dart';
+import 'package:shakelha_mp/resources/socket_methods.dart';
+import 'package:shakelha_mp/responsive/responsive.dart';
+import 'package:shakelha_mp/widgets/custom_button.dart';
+import 'package:shakelha_mp/widgets/custom_text.dart';
+import 'package:shakelha_mp/widgets/custom_textfield.dart';
+import 'package:shakelha_mp/widgets/game_page.dart';
 
 class JoinRoomScreen extends StatefulWidget {
   static String routeName = '/join-room';

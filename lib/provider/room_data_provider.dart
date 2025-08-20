@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/move.dart';  // This imports PlacedTile
-import 'package:mp_tictactoe/models/room.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/models/position.dart';
+import 'package:shakelha_mp/models/move.dart';  // This imports PlacedTile
+import 'package:shakelha_mp/models/room.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/models/position.dart';
 
 class RoomDataProvider extends ChangeNotifier {
   Room? _room;

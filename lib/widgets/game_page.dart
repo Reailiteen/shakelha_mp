@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/widgets/gameBG.dart';
-import 'package:mp_tictactoe/widgets/topbar.dart';
+import 'package:shakelha_mp/widgets/gameBG.dart';
+import 'package:shakelha_mp/widgets/topbar.dart';
 
 /// A reusable shell that applies the wooden game background, a top bar,
 /// and a padded content area. Use this for all app screens to unify UI.

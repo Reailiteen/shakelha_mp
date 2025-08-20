@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/position.dart';
-import 'package:mp_tictactoe/models/move.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/provider/room_data_provider.dart';
-import 'package:mp_tictactoe/resources/socket_methods.dart';
+import 'package:shakelha_mp/models/position.dart';
+import 'package:shakelha_mp/models/move.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/resources/socket_methods.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'tileUI.dart';

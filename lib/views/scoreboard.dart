@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/provider/game_provider.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
 import 'package:provider/provider.dart';
 
 class Scoreboard extends StatelessWidget {

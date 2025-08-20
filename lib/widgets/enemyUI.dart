@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/widgets/tileUI.dart';
-import 'package:mp_tictactoe/provider/pass_play_provider.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/widgets/tileUI.dart';
+import 'package:shakelha_mp/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 

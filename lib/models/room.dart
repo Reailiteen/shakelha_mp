@@ -7,7 +7,7 @@ import 'player.dart';
 import 'move.dart';
 import 'tile.dart';
 import 'position.dart';
-import 'package:mp_tictactoe/resources/scrabble_game_logic.dart';
+import 'package:shakelha_mp/resources/scrabble_game_logic.dart';
 
 enum Status {
   open,

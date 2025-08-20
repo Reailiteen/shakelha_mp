@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/position.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/provider/game_provider.dart';
-import 'package:mp_tictactoe/provider/room_data_provider.dart';
+import 'package:shakelha_mp/models/position.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
+import 'package:shakelha_mp/provider/room_data_provider.dart';
 import 'package:provider/provider.dart';
 
 /// A 15×15 Scrabble board grid supporting Arabic letters and pending placements.

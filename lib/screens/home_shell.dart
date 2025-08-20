@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/screens/main_menu_screen.dart';
-import 'package:mp_tictactoe/screens/shop_screen.dart';
-import 'package:mp_tictactoe/widgets/game_page.dart';
+import 'package:shakelha_mp/screens/main_menu_screen.dart';
+import 'package:shakelha_mp/screens/shop_screen.dart';
+import 'package:shakelha_mp/widgets/game_page.dart';
 
 /// HomeShell provides the main RTL navigation between Shop (left)
 /// and Game menu (right, default).

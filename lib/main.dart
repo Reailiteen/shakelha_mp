@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/provider/room_data_provider.dart';
-import 'package:mp_tictactoe/screens/create_room_screen.dart';
-import 'package:mp_tictactoe/screens/game_screen.dart';
-import 'package:mp_tictactoe/screens/join_room_screen.dart';
-import 'package:mp_tictactoe/screens/main_menu_screen.dart';
-import 'package:mp_tictactoe/screens/splash_screen.dart';
-import 'package:mp_tictactoe/screens/shop_screen.dart';
-import 'package:mp_tictactoe/screens/home_shell.dart';
-import 'package:mp_tictactoe/screens/pass_play_screen.dart';
-import 'package:mp_tictactoe/theme.dart';
+import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/screens/create_room_screen.dart';
+import 'package:shakelha_mp/screens/game_screen.dart';
+import 'package:shakelha_mp/screens/join_room_screen.dart';
+import 'package:shakelha_mp/screens/main_menu_screen.dart';
+import 'package:shakelha_mp/screens/splash_screen.dart';
+import 'package:shakelha_mp/screens/shop_screen.dart';
+import 'package:shakelha_mp/screens/home_shell.dart';
+import 'package:shakelha_mp/screens/pass_play_screen.dart';
+import 'package:shakelha_mp/theme.dart';
 import 'package:provider/provider.dart';
 
 void main() {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/screens/home_shell.dart';
-import 'package:mp_tictactoe/widgets/gameBG.dart';
+import 'package:shakelha_mp/screens/home_shell.dart';
+import 'package:shakelha_mp/widgets/gameBG.dart';
 
 class SplashScreen extends StatefulWidget {
   static const routeName = '/splash';

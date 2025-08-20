@@ -1,11 +1,11 @@
 import 'dart:math' as math;
-import 'package:mp_tictactoe/models/board.dart';
-import 'package:mp_tictactoe/models/letterDistribution.dart';
-import 'package:mp_tictactoe/models/move.dart';
-import 'package:mp_tictactoe/models/player.dart';
-import 'package:mp_tictactoe/models/position.dart';
-import 'package:mp_tictactoe/models/room.dart';
-import 'package:mp_tictactoe/models/tile.dart';
+import 'package:shakelha_mp/models/board.dart';
+import 'package:shakelha_mp/models/letterDistribution.dart';
+import 'package:shakelha_mp/models/move.dart';
+import 'package:shakelha_mp/models/player.dart';
+import 'package:shakelha_mp/models/position.dart';
+import 'package:shakelha_mp/models/room.dart';
+import 'package:shakelha_mp/models/tile.dart';
 // Dictionary handled by Board validator
 
 class ScrabbleGameLogic {

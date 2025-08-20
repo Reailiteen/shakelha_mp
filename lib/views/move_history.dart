@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:mp_tictactoe/provider/game_provider.dart';
-import 'package:mp_tictactoe/models/room.dart';
-import 'package:mp_tictactoe/models/move.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
+import 'package:shakelha_mp/models/room.dart';
+import 'package:shakelha_mp/models/move.dart';
 
 class MoveHistory extends StatelessWidget {
   const MoveHistory({Key? key}) : super(key: key);

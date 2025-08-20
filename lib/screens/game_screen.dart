@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/provider/room_data_provider.dart';
-import 'package:mp_tictactoe/resources/socket_methods.dart';
-import 'package:mp_tictactoe/provider/game_provider.dart';
-import 'package:mp_tictactoe/views/waiting_lobby.dart';
+import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/resources/socket_methods.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
+import 'package:shakelha_mp/views/waiting_lobby.dart';
 import 'package:provider/provider.dart';
-import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
-import 'package:mp_tictactoe/models/room.dart';
-import 'package:mp_tictactoe/widgets/topbar.dart';
-import 'package:mp_tictactoe/widgets/multiplayer_enemyUI.dart';
-import 'package:mp_tictactoe/widgets/multiplayer_boardUI.dart';
-import 'package:mp_tictactoe/widgets/multiplayer_playerUI.dart';
-import 'package:mp_tictactoe/widgets/gameBG.dart';
+import 'package:shakelha_mp/data/arabic_dictionary_loader.dart';
+import 'package:shakelha_mp/models/room.dart';
+import 'package:shakelha_mp/widgets/topbar.dart';
+import 'package:shakelha_mp/widgets/multiplayer_enemyUI.dart';
+import 'package:shakelha_mp/widgets/multiplayer_boardUI.dart';
+import 'package:shakelha_mp/widgets/multiplayer_playerUI.dart';
+import 'package:shakelha_mp/widgets/gameBG.dart';
 
 
 class GameScreen extends StatefulWidget {

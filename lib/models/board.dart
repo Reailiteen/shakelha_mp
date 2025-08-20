@@ -1,6 +1,6 @@
 import 'tile.dart';
 import 'position.dart';
-import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
+import 'package:shakelha_mp/data/arabic_dictionary_loader.dart';
 import 'package:flutter/material.dart';
 
 /// Arabic Scrabble Rules Implemented:

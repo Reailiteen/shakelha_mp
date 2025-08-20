@@ -1,16 +1,16 @@
 
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:mp_tictactoe/models/room.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/models/board.dart';
-import 'package:mp_tictactoe/models/letterDistribution.dart';
-import 'package:mp_tictactoe/models/player.dart';
-import 'package:mp_tictactoe/models/move.dart';
-import 'package:mp_tictactoe/provider/room_data_provider.dart';
-import 'package:mp_tictactoe/resources/socket_client.dart';
-import 'package:mp_tictactoe/screens/game_screen.dart';
-import 'package:mp_tictactoe/utils/utils.dart';
+import 'package:shakelha_mp/models/room.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/models/board.dart';
+import 'package:shakelha_mp/models/letterDistribution.dart';
+import 'package:shakelha_mp/models/player.dart';
+import 'package:shakelha_mp/models/move.dart';
+import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/resources/socket_client.dart';
+import 'package:shakelha_mp/screens/game_screen.dart';
+import 'package:shakelha_mp/utils/utils.dart';
 import 'package:provider/provider.dart';
 import 'package:socket_io_client/socket_io_client.dart';
 

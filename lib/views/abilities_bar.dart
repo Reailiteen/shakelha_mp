@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:mp_tictactoe/provider/game_provider.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
 
 /// A decorative abilities bar inspired by the provided UI.
 /// Non-invasive: only wires existing safe actions when possible.

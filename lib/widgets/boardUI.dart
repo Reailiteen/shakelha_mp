@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:mp_tictactoe/models/position.dart';
-import 'package:mp_tictactoe/models/move.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/provider/pass_play_provider.dart';
+import 'package:shakelha_mp/models/position.dart';
+import 'package:shakelha_mp/models/move.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 // Import board.dart to access word validation classes
-import 'package:mp_tictactoe/models/board.dart';
+import 'package:shakelha_mp/models/board.dart';
 
 // Grid cell widget for responsive board tiles
 class GridCell extends StatelessWidget {

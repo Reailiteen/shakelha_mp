@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:mp_tictactoe/models/room.dart';
-import 'package:mp_tictactoe/models/player.dart';
-import 'package:mp_tictactoe/models/board.dart';
-import 'package:mp_tictactoe/models/letterDistribution.dart';
-import 'package:mp_tictactoe/models/tile.dart';
-import 'package:mp_tictactoe/models/position.dart';
-import 'package:mp_tictactoe/models/move.dart';
-import 'package:mp_tictactoe/resources/scrabble_game_logic.dart';
-import 'package:mp_tictactoe/data/arabic_dictionary_loader.dart';
+import 'package:shakelha_mp/models/room.dart';
+import 'package:shakelha_mp/models/player.dart';
+import 'package:shakelha_mp/models/board.dart';
+import 'package:shakelha_mp/models/letterDistribution.dart';
+import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/models/position.dart';
+import 'package:shakelha_mp/models/move.dart';
+import 'package:shakelha_mp/resources/scrabble_game_logic.dart';
+import 'package:shakelha_mp/data/arabic_dictionary_loader.dart';
 
 /// Provider for local pass-and-play game state management
 class PassPlayProvider extends ChangeNotifier {

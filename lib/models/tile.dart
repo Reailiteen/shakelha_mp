@@ -1,6 +1,6 @@
 
 
-import 'package:mp_tictactoe/models/position.dart';
+import 'package:shakelha_mp/models/position.dart';
 
 /// Represents a single tile/letter in the game.
 /// Can be on the board, in a player's rack, or in the letter bag.
