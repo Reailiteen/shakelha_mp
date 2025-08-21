@@ -307,6 +307,10 @@ class _BoardUIState extends State<BoardUI> {
             if (passPlay.wordValidationEnabled)
               ..._generateWordOverlays(passPlay.validatedWords, passPlay.pendingPlacements, _cellSize),
             
+            // Scoring preview and validation feedback for the last placed tile
+            if (passPlay.pendingPlacements.isNotEmpty)
+              ..._generateScoringAndValidationOverlays(passPlay, _cellSize),
+            
             // Debug grid overlay (disabled)
             if (false) // Set to true to enable debug grid
               IgnorePointer(
@@ -446,8 +450,8 @@ class _BoardUIState extends State<BoardUI> {
       final height = (maxRow - minRow + 1) * tileSize + (maxRow - minRow) * tileSpacing;
       
       // Center the overlay over the tiles
-      final offsetX = 5; // Center horizontally
-      final offsetY = 5; // Center vertically
+      final offsetX = 6; // Center horizontally
+      final offsetY = 2; // Center vertically
       
       return Positioned(
         left: topLeft.dx + offsetX,
@@ -468,6 +472,273 @@ class _BoardUIState extends State<BoardUI> {
         ),
       );
     }).toList();
+  }
+
+  /// Generate positioned container overlays for scoring and validation feedback for the last placed tile
+  List<Widget> _generateScoringAndValidationOverlays(PassPlayProvider passPlay, double cellSize) {
+    final lastPlacedTile = passPlay.pendingPlacements.last;
+    final lastPlacedPosition = lastPlacedTile.position;
+    
+    final List<Widget> overlays = [];
+    
+    // Check validation status for ALL words involving the current placement
+    // This includes the main word and any side words formed
+    final allRelevantWords = passPlay.validatedWords.where((word) =>
+      word.positions.any((wordPos) => 
+        passPlay.pendingPlacements.any((placement) => placement.position == wordPos)
+      )
+    ).toList();
+    
+    final hasValidWord = allRelevantWords.any((w) => w.status == WordValidationStatus.valid);
+    final hasInvalidWord = allRelevantWords.any((w) => w.status == WordValidationStatus.invalid);
+    final isValidPlacement = hasValidWord && !hasInvalidWord;
+    
+    // Calculate potential score for current placement
+    final potentialScore = _calculatePotentialScore(passPlay.pendingPlacements);
+    
+    // Get tile position and size
+    final position = _getTilePosition(lastPlacedPosition.row, lastPlacedPosition.col, cellSize);
+    final double tileSize = cellSize; // 90% of cell size
+    final double offsetX = 5; // Center horizontally
+    final double offsetY = 5; // Center vertically
+    
+    // Scoring preview bubble (only show if placement is valid)
+    if (isValidPlacement) {
+      overlays.add(
+        Positioned(
+          left: position.dx + offsetX - 25,
+          top: position.dy + offsetY - 45,
+          child: IgnorePointer(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '+$potentialScore',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  // Show multiplier indicator if on special cell
+                  if (_hasMultiplier(passPlay.room?.board, lastPlacedPosition))
+                    Container(
+                      margin: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _getMultiplierText(passPlay.room?.board, lastPlacedPosition),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // Red overlay for invalid placements - cover the ENTIRE word, not just the last tile
+    if (hasInvalidWord) {
+      // Find all positions that are part of invalid words
+      final invalidWordPositions = <Position>{};
+      for (final word in allRelevantWords) {
+        if (word.status == WordValidationStatus.invalid) {
+          invalidWordPositions.addAll(word.positions);
+        }
+      }
+      
+      // Calculate the bounding rectangle for all invalid word positions
+      if (invalidWordPositions.isNotEmpty) {
+        final sortedByRow = invalidWordPositions.toList()..sort((a, b) => a.row.compareTo(b.row));
+        final sortedByCol = invalidWordPositions.toList()..sort((a, b) => a.col.compareTo(b.col));
+        
+        final minRow = sortedByRow.first.row;
+        final maxRow = sortedByRow.last.row;
+        final minCol = sortedByCol.first.col;
+        final maxCol = sortedByCol.last.col;
+        
+        // Use the same positioning logic as word overlays
+        final topLeft = _getTilePosition(minRow, minCol, cellSize);
+        final double tileSize = cellSize;
+        final double tileSpacing = 0;
+        
+        // Calculate dimensions for the entire word
+        final width = (maxCol - minCol + 1) * tileSize + (maxCol - minCol) * tileSpacing;
+        final height = (maxRow - minRow + 1) * tileSize + (maxRow - minRow) * tileSpacing;
+        
+        // Center the overlay over the tiles
+        final offsetX = 3;
+        final offsetY = 2;
+        
+        overlays.add(
+          Positioned(
+            left: topLeft.dx + offsetX,
+            top: topLeft.dy + offsetY,
+            width: width,
+            height: height,
+            child: IgnorePointer(
+              child: GestureDetector(
+                onTap: () => _showValidationError(context, allRelevantWords),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.red,
+                      width: 2.0,
+                      strokeAlign: BorderSide.strokeAlignCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(2.0),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    
+    return overlays;
+  }
+  
+  /// Calculate potential score for current tile placement
+  int _calculatePotentialScore(List<PlacedTile> pendingPlacements) {
+    if (pendingPlacements.isEmpty) return 0;
+    
+    // Get the board from the provider to check multipliers
+    final passPlay = context.read<PassPlayProvider>();
+    final board = passPlay.room?.board;
+    
+    if (board != null) {
+      // Find ALL words that involve the pending placements
+      final allRelevantWords = passPlay.validatedWords.where((word) =>
+        word.positions.any((wordPos) => 
+          pendingPlacements.any((placement) => placement.position == wordPos)
+        )
+      ).toList();
+      
+      int totalScore = 0;
+      
+      // Calculate score for each word
+      for (final word in allRelevantWords) {
+        if (word.status == WordValidationStatus.valid) {
+          int wordScore = 0;
+          int wordMultiplier = 1;
+          
+          // Sum up points for ALL tiles in the word (new + existing)
+          for (final position in word.positions) {
+            int tileScore = 0;
+            
+            // Check if this position has a newly placed tile
+            final pendingTile = pendingPlacements.firstWhere(
+              (p) => p.position == position,
+              orElse: () => PlacedTile(tile: Tile(letter: ''), position: position),
+            );
+            
+            if (pendingTile.tile.letter.isNotEmpty) {
+              // This is a newly placed tile
+              tileScore = pendingTile.tile.value;
+            } else {
+              // This is an existing tile on the board
+              final existingTile = board.getTileAt(position);
+              if (existingTile != null) {
+                tileScore = existingTile.value;
+              }
+            }
+            
+            // Apply letter multipliers
+            if (board.isSpecialPosition(position)) {
+              final multiplier = board.getMultiplierAt(position);
+              if (multiplier != null && !multiplier.isWordMultiplier) {
+                tileScore *= multiplier.value;
+              }
+            }
+            
+            wordScore += tileScore;
+          }
+          
+          // Apply word multipliers
+          for (final position in word.positions) {
+            if (board.isSpecialPosition(position)) {
+              final multiplier = board.getMultiplierAt(position);
+              if (multiplier != null && multiplier.isWordMultiplier) {
+                wordMultiplier *= multiplier.value;
+                break; // Only apply the first word multiplier to avoid confusion
+              }
+            }
+          }
+          
+          totalScore += wordScore * wordMultiplier;
+        }
+      }
+      
+      return totalScore;
+    } else {
+      // Fallback: just sum pending tile values if no board available
+      int totalScore = 0;
+      for (final placement in pendingPlacements) {
+        totalScore += placement.tile.value;
+      }
+      return totalScore;
+    }
+  }
+  
+  /// Show validation error details in a snackbar
+  void _showValidationError(BuildContext context, List<ValidatedWord> wordsAtPosition) {
+    final invalidWords = wordsAtPosition.where((w) => w.status == WordValidationStatus.invalid).toList();
+    if (invalidWords.isNotEmpty) {
+      // Show all invalid words, not just the first one
+      final errorMessages = invalidWords.map((word) => 'Invalid word: "${word.text}"').toList();
+      final errorMessage = errorMessages.join('\n');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5), // Increased duration for multiple errors
+          action: SnackBarAction(
+            label: 'Dismiss',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+    }
+  }
+  
+  /// Helper to check if a position has a letter multiplier
+  bool _hasMultiplier(Board? board, Position position) {
+    final multiplier = board?.getMultiplierAt(position);
+    return multiplier != null && !multiplier.isWordMultiplier;
+  }
+  
+  /// Helper to get the multiplier text for a position
+  String _getMultiplierText(Board? board, Position position) {
+    final multiplier = board?.getMultiplierAt(position);
+    if (multiplier == null) return '';
+    return multiplier.isWordMultiplier ? 'x${multiplier.value}' : 'x${multiplier.value}';
   }
   
   /// Get enhanced border color based on word validation status
