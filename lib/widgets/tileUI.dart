@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shakelha_mp/provider/tile_theme_provider.dart';
 
 class TileUI extends StatelessWidget {
-  const TileUI({
+  TileUI({
     Key? key, 
     required this.width, 
     required this.height, 
@@ -23,6 +23,14 @@ class TileUI extends StatelessWidget {
   final double left;
   final TileColors? tileColors; // Made optional
 
+  final GlobalKey _key = GlobalKey();
+
+  void _getPosition() {
+    final renderBox = _key.currentContext!.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    print("Tile position: $position, size: $size");
+  }
   @override
   Widget build(BuildContext context) {
     // Get colors from provider if no specific theme is provided

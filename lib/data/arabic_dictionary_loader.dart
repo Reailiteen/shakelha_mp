@@ -267,7 +267,7 @@ class ArabicDictionary {
     }
 
     // Test some actual words
-    final testWords = ['نمل', 'كتاب', 'مدرسة', 'بيت'];
+    final testWords = ['نمل', 'كتاب', 'مدرسة', 'بيت','دشداش',''];
     for (final word in testWords) {
       final found = containsWord(word);
       print('[Dictionary] Test word "$word": $found');

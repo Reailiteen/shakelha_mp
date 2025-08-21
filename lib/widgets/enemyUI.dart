@@ -60,7 +60,7 @@ class EnemyUi extends StatelessWidget {
 
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Colors.black,
                             fontSize: nameSize*1.2,
                             fontWeight: FontWeight.w500,
                             fontFamily: GoogleFonts.jomhuria().fontFamily,
@@ -73,7 +73,7 @@ class EnemyUi extends StatelessWidget {
                           'نقاط : $displayPoints',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Colors.black,
                             fontSize: pointsSize,
                             fontWeight: FontWeight.w400,
                             fontFamily: GoogleFonts.jomhuria().fontFamily,

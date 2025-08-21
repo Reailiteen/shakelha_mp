@@ -207,6 +207,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
 
   Widget _buildGameScreenContent(PassPlayProvider passPlayProvider) {
     return SafeArea(
+      
       child: GestureDetector(
         onHorizontalDragEnd: (details) {
           // Detect swipe to the right (positive velocity)
@@ -215,6 +216,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
           }
         },
         child: LayoutBuilder(
+
           builder: (context, constraints) {
             return Column(
               children: [
