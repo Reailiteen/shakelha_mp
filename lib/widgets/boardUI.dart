@@ -198,13 +198,12 @@ class _BoardUIState extends State<BoardUI> {
                           final hasValidWord = wordsAtPosition.any((w) => w.status == WordValidationStatus.valid);
                           final hasInvalidWord = wordsAtPosition.any((w) => w.status == WordValidationStatus.invalid);
                           
-                          // Calculate position for this cell
-                          final left = col * (actualCellSize + 1); // +1 for spacing
-                          final top = row * (actualCellSize + 1); // +1 for spacing
+                          // Calculate position for this cell using the helper method
+                          final position = _getTilePosition(row, col, actualCellSize);
                           
                           return Positioned(
-                            left: left,
-                            top: top,
+                            left: position.dx,
+                            top: position.dy,
                             width: actualCellSize,
                             height: actualCellSize,
                             child: DragTarget<Object>(
@@ -371,6 +370,40 @@ class _BoardUIState extends State<BoardUI> {
     );
   }
   
+  /// Calculate the position of a tile on the board based on its row and column
+  /// This ensures consistent positioning regardless of screen size
+  Offset _getTilePosition(int row, int col, double cellSize) {
+    const double gridSpacing = 1.0; // Consistent with board layout
+    final left = col * (cellSize + gridSpacing);
+    final top = row * (cellSize + gridSpacing);
+    return Offset(left, top);
+  }
+
+  /// Get the position of a tile on the board (public method for external use)
+  /// Returns the Offset (left, top) for the given row and column
+  Offset getTilePosition(int row, int col) {
+    return _getTilePosition(row, col, _cellSize);
+  }
+
+  /// Get the current cell size being used by the board
+  double get currentCellSize => _cellSize;
+
+  /// Debug method to print tile positions for troubleshooting
+  void debugTilePositions() {
+    print('=== Board Debug Info ===');
+    print('Current cell size: $_cellSize');
+    print('Board size: ${widget.boardSize}');
+    
+    // Print a few sample positions
+    for (int row = 0; row < 3; row++) {
+      for (int col = 0; col < 3; col++) {
+        final pos = _getTilePosition(row, col, _cellSize);
+        print('Tile at ($row, $col): left=${pos.dx.toStringAsFixed(2)}, top=${pos.dy.toStringAsFixed(2)}');
+      }
+    }
+    print('========================');
+  }
+
   /// Generate positioned container overlays for word validation
   List<Widget> _generateWordOverlays(List<ValidatedWord> words, List<PlacedTile> pendingPlacements, double cellSize) {
     // Only show overlays for words that involve newly placed tiles
@@ -399,18 +432,26 @@ class _BoardUIState extends State<BoardUI> {
       final minCol = sortedByCol.first.col;
       final maxCol = sortedByCol.last.col;
       
-      // Use the old approach that worked correctly
-      // Calculate positions based on cell size and spacing
-      const double gridSpacing = 1.0;
+      // Use the consistent position calculation method
+      final topLeft = _getTilePosition(minRow, minCol, cellSize);
       
-      final top = minRow * (cellSize + gridSpacing);
-      final height = (maxRow - minRow + 1) * cellSize + (maxRow - minRow) * gridSpacing;
-      final width = (maxCol - minCol + 1) * cellSize + (maxCol - minCol) * gridSpacing;
-      final left = minCol * (cellSize + gridSpacing);
+      // Calculate dimensions - the overlay should exactly cover the tiles
+      // Account for the fact that tiles use 90% of cell size (FractionallySizedBox with 0.9 factor)
+      final tileSize = cellSize ; // Tiles are 90% of cell size
+      final tileSpacing = 0; // 10% spacing around tiles
+      
+      // For single tiles, width and height should equal tileSize
+      // For multiple tiles, account for the spacing between them
+      final width = (maxCol - minCol + 1) * tileSize + (maxCol - minCol) * tileSpacing;
+      final height = (maxRow - minRow + 1) * tileSize + (maxRow - minRow) * tileSpacing;
+      
+      // Center the overlay over the tiles
+      final offsetX = 5; // Center horizontally
+      final offsetY = 5; // Center vertically
       
       return Positioned(
-        left: left,
-        top: top,
+        left: topLeft.dx + offsetX,
+        top: topLeft.dy + offsetY,
         width: width,
         height: height,
         child: IgnorePointer(
@@ -418,10 +459,10 @@ class _BoardUIState extends State<BoardUI> {
             decoration: BoxDecoration(
               border: Border.all(
                 color: word.feedbackColor,
-                width: 2.0, // Reduced from 3.0 to 2.0
-                strokeAlign: BorderSide.strokeAlignCenter, // Center the outline between tiles
+                width: 2.0,
+                strokeAlign: BorderSide.strokeAlignCenter,
               ),
-              borderRadius: BorderRadius.circular(2.0), // Reduced from 6.0 to 2.0 for less rounded corners
+              borderRadius: BorderRadius.circular(2.0),
             ),
           ),
         ),
