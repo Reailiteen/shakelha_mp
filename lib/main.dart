@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/provider/responsive_provider.dart';
+import 'package:shakelha_mp/provider/tile_theme_provider.dart';
 import 'package:shakelha_mp/screens/create_room_screen.dart';
 import 'package:shakelha_mp/screens/game_screen.dart';
 import 'package:shakelha_mp/screens/join_room_screen.dart';
@@ -20,8 +22,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => RoomDataProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => RoomDataProvider()),
+        ChangeNotifierProvider(create: (context) => ResponsiveProvider()),
+        ChangeNotifierProvider(create: (context) => TileThemeProvider()),
+      ],
       child: MaterialApp(
         title: 'شكّلها',
         theme: darkTheme,

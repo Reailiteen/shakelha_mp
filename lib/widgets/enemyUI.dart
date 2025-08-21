@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/provider/responsive_provider.dart';
+import 'package:shakelha_mp/provider/tile_theme_provider.dart';
 import 'package:shakelha_mp/widgets/tileUI.dart';
 import 'package:shakelha_mp/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
@@ -13,15 +15,16 @@ class EnemyUi extends StatelessWidget {
   final List<Tile> tiles;
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final responsive = context.read<ResponsiveProvider>();
+    final screenWidth = responsive.screenSize.width;
     
     return Padding(
-      padding: const EdgeInsets.all(3.0),
+      padding: const EdgeInsets.all(1.0),
       child: Column(
         children: [
           // Scrabble-style top row: Opponent info (left) + My info (right)
           Expanded(
-            flex: 4,
+            flex: 5,
             child: Builder(builder: (context) {
               final prov = context.read<PassPlayProvider?>();
               final my = prov?.currentPlayer;
@@ -112,14 +115,14 @@ class EnemyUi extends StatelessWidget {
             }),
           ),
           
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           
           // Enemy tiles (show same UI as player tiles)
           Expanded(
-            flex: 4,
+            flex: 3,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(2.0),
+              padding: const EdgeInsets.all(1.0),
               decoration: BoxDecoration(
                 color: const Color(0xFFA46D41),
                 borderRadius: BorderRadius.circular(12),
@@ -135,7 +138,8 @@ class EnemyUi extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: tiles.asMap().entries.map((entry) {
                   final tile = entry.value;
-                  final double tileSize = (screenWidth - 80) / 7;
+                  // Fixed tile size - same width and height regardless of screen stretch
+                  const double tileSize = 40.0; // Fixed size instead of responsive
                   
                   return SizedBox(
                     width: tileSize,
@@ -147,6 +151,7 @@ class EnemyUi extends StatelessWidget {
                       points: tile.value,
                       left: 0,
                       top: 0,
+                      // No tileColors specified - will use provider's current theme
                     ),
                   );
                 }).toList(),

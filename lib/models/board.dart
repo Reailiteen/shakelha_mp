@@ -70,13 +70,13 @@ class Board {
 
   /// Creates a new board with the given size and grid
   Board({
-    this.size = 13, // Changed from 15 to 13
+    this.size = 13, // Default to 13x13
     required this.grid,
     Map<Position, CellMultiplier>? cellMultipliers,
   }) : cellMultipliers = cellMultipliers ?? const {};
 
   /// Creates an empty board of the given size
-  factory Board.empty({int size = 13}) { // Changed from 15 to 13
+  factory Board.empty({int size = 13}) { // Default to 13x13
     return Board(
       size: size,
       grid: List.generate(
@@ -556,7 +556,7 @@ class Board {
   
   /// Gets the center position of the board
   Position get centerPosition {
-    // For a 13x13 board (0-indexed), center is at (6,6)
+    // For any board size, center is at (size/2, size/2)
     final center = Position(row: size ~/ 2, col: size ~/ 2);
     print('[Board] Center position calculated as: (${center.row},${center.col}) for board size $size');
     return center;

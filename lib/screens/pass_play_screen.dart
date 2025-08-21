@@ -25,6 +25,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
   final _p1Controller = TextEditingController(text: '');
   final _p2Controller = TextEditingController(text: '');
   bool _gameStarted = false;
+  int _selectedBoardSize = 13; // Default to 13x13
 
   @override
   void initState() {
@@ -44,7 +45,7 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
     final p1Name = _p1Controller.text.trim().isEmpty ? 'Player 1' : _p1Controller.text.trim();
     final p2Name = _p2Controller.text.trim().isEmpty ? 'Player 2' : _p2Controller.text.trim();
 
-    provider.initializeGame(p1Name, p2Name);
+    provider.initializeGame(p1Name, p2Name, boardSize: _selectedBoardSize);
     setState(() => _gameStarted = true);
   }
 
@@ -115,12 +116,30 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                   ),
                   child: Column(
                     children: [
+                      // Board size selector
+                      Text(
+                        'حجم اللوحة',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildBoardSizeOption(11, '11 × 11'),
+                          _buildBoardSizeOption(13, '13 × 13'),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
                       TextField(
                         controller: _p1Controller,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.black),
                         decoration: InputDecoration(
-                          labelText: 'اسم اللاعب الأول',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelText: 'اللاعب 1',
+                          labelStyle: const TextStyle(color: Color.fromARGB(179, 60, 193, 255)),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Colors.white30),
@@ -134,10 +153,10 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _p2Controller,
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(color: Colors.black),
                         decoration: InputDecoration(
-                          labelText: 'اسم اللاعب الثاني',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelText: 'اللاعب 2',
+                          labelStyle: const TextStyle(color: Color.fromARGB(179, 60, 193, 255)),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Colors.white30),
@@ -178,58 +197,8 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
     return ChangeNotifierProvider<GameProvider>(
       create: (_) => GameProvider(),
       builder: (context, child) {
-        // Seed GameProvider with current Room and player id
-        final game = context.read<GameProvider>();
-        final room = passPlayProvider.room!;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          game.updateRoom(room);
-          game.setCurrentPlayerId(passPlayProvider.currentPlayerId ?? room.players.first.id);
-
-          // Surface latest pass&play message as a SnackBar (non-blocking)
-          final p = passPlayProvider;
-          final msg = p.errorMessage ?? p.successMessage;
-          if (msg != null && mounted) {
-            final isError = p.errorMessage != null;
-            print('[PassPlayScreen] Displaying message: "$msg" (isError: $isError)');
-            print('[PassPlayScreen] Stack trace: ${StackTrace.current}');
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(msg, textAlign: TextAlign.center),
-                  backgroundColor: isError ? const Color(0xFFE57373) : const Color(0xFF26A69A),
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-          }
-        });
-
-        // Keep GameProvider synced with PassPlayProvider
-        final sync = Selector<PassPlayProvider, String?>(
-          selector: (_, prov) => prov.room?.id,
-          builder: (ctx, roomId, __) {
-            if (passPlayProvider.room != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                final gp = ctx.read<GameProvider>();
-                gp.updateRoom(passPlayProvider.room!);
-                gp.setCurrentPlayerId(
-                  passPlayProvider.currentPlayerId ?? passPlayProvider.room!.players.first.id
-                );
-              });
-            }
-            return const SizedBox.shrink();
-          },
-        );
-
         return Scaffold(
-          body: Stack(
-            children: [
-              // Background
-              _buildGameScreenContent(passPlayProvider),
-              sync,
-            ],
-          ),
+          body: _buildGameScreenContent(passPlayProvider),
         );
       },
     );
@@ -237,15 +206,10 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
 
   Widget _buildGameScreenContent(PassPlayProvider passPlayProvider) {
     return SafeArea(
-      
-
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isPortrait = constraints.maxHeight > constraints.maxWidth;
-          
           return Column(
             children: [
-              
               // Top Bar with word validation status - 10% of screen height
               SizedBox(
                 height: constraints.maxHeight * 0.07,
@@ -332,9 +296,9 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
               ),
               SizedBox(height: constraints.maxHeight * 0.005),
               
-              // Enemy UI - 12% of screen height (reduced from 15%)
+              // Enemy UI - 12% of screen height
               SizedBox(
-                height: constraints.maxHeight * 0.17,
+                height: constraints.maxHeight * 0.14,
                 child: Consumer<PassPlayProvider>(
                   builder: (context, passPlay, child) {
                     final room = passPlay.room!;
@@ -360,13 +324,11 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
               // Game Board - 50% of screen height (main content)
               Expanded(
                 flex: 7,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: BoardUI(),
-                ),
+                child: BoardUI(boardSize: passPlayProvider.room?.board.size ?? 13),
               ),
               SizedBox(height: constraints.maxHeight * 0.01),
-              // Player UI - 18% of screen height (reduced from 20%)
+              
+              // Player UI - 18% of screen height
               SizedBox(
                 height: constraints.maxHeight * 0.17,
                 child: Consumer<PassPlayProvider>(
@@ -395,8 +357,6 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                 ),
               ),
               SizedBox(height: constraints.maxHeight * 0.005),
-              
-              // Bottom padding for safe area
             ],
           );
         },
@@ -416,5 +376,36 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
     } else {
       return const Color(0xFF4CAF50); // Green
     }
+  }
+
+  /// Build board size option button
+  Widget _buildBoardSizeOption(int size, String label) {
+    final isSelected = _selectedBoardSize == size;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedBoardSize = size;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF26A69A) : Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF26A69A) : Colors.white24,
+            width: 2,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
   }
 }

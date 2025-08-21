@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/models/move.dart';
 import 'package:shakelha_mp/widgets/tileUI.dart';
 import 'package:shakelha_mp/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
@@ -26,64 +27,84 @@ class PlayerUi extends StatelessWidget {
       padding: const EdgeInsets.all(4.0),
       child: Column(
         children: [
-          // Tiles rack
+          // Tiles rack - now a DragTarget for tiles being returned from the board
           Expanded(
             flex: 12,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(2.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFA46D41),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+            child: DragTarget<PlacedTile>(
+              onWillAccept: (data) {
+                // Only accept if it's the player's turn and the tile is from the board
+                return passPlay?.isMyTurn == true && data != null;
+              },
+              onAccept: (placedTile) {
+                // Return the tile to the rack by removing it from the board
+                if (passPlay != null) {
+                  passPlay.removePendingPlacement(placedTile.position);
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(2.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA46D41),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    // Add visual feedback when dragging tiles over the rack
+                    border: candidateData.isNotEmpty 
+                        ? Border.all(color: Colors.green.withOpacity(0.7), width: 2)
+                        : null,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: tiles.asMap().entries.map((entry) {
-                  final tile = entry.value;
-                  final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
-                  
-                  return Container(
-                    width: tileSize,
-                    height: tileSize,
-                    child: Draggable<Tile>(
-                      data: tile,
-                      feedback: SizedBox(
-                        // Use average size between rack tile and board tile for better visual consistency
-                        width: _getDragFeedbackSize(tileSize),
-                        height: _getDragFeedbackSize(tileSize),
-                        child: TileUI(
-                          width: _getDragFeedbackSize(tileSize),
-                          height: _getDragFeedbackSize(tileSize),
-                          letter: tile.letter,
-                          points: tile.value,
-                          left: 0,
-                          top: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: tiles.asMap().entries.map((entry) {
+                      final tile = entry.value;
+                      final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
+                      
+                      return Container(
+                        width: tileSize,
+                        height: tileSize,
+                        child: Draggable<Tile>(
+                          data: tile,
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: SizedBox(
+                              width: _getDragFeedbackSize(tileSize),
+                              height: _getDragFeedbackSize(tileSize),
+                              child: TileUI(
+                                width: _getDragFeedbackSize(tileSize),
+                                height: _getDragFeedbackSize(tileSize),
+                                letter: tile.letter,
+                                points: tile.value,
+                                left: 0,
+                                top: 0,
+                              ),
+                            ),
+                          ),
+                          childWhenDragging: const SizedBox.shrink(),
+                          onDragStarted: () {
+                            // Initialize placing mode if available
+                            if (passPlay != null) passPlay.startPlacingTiles();
+                          },
+                          child: TileUI(
+                            width: tileSize,
+                            height: tileSize,
+                            letter: tile.letter,
+                            points: tile.value,
+                            left: 0,
+                            top: 0,
+                          ),
                         ),
-                      ),
-                      childWhenDragging: const SizedBox.shrink(),
-                      onDragStarted: () {
-                        // Initialize placing mode if available
-                        if (passPlay != null) passPlay.startPlacingTiles();
-                      },
-                    child: TileUI(
-                      width: tileSize,
-                      height: tileSize,
-                      letter: tile.letter,
-                      points: tile.value,
-                      left: 0,
-                      top: 0,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 10),
@@ -243,10 +264,7 @@ class PlayerUi extends StatelessWidget {
               ],
             ),
           ),
-          
-          
-          
-          ],
+        ],
       ),
     );
   }

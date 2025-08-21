@@ -78,12 +78,12 @@ class PassPlayProvider extends ChangeNotifier {
   }
 
   /// Initialize a new local game with two players (convenience)
-  void initializeGame(String player1Name, String player2Name) {
-    startGame(2, [player1Name, player2Name]);
+  void initializeGame(String player1Name, String player2Name, {int boardSize = 13}) {
+    startGame(2, [player1Name, player2Name], boardSize: boardSize);
   }
 
   /// Start a new pass-and-play game with N players
-  void startGame(int playerCount, List<String> playerNames) {
+  void startGame(int playerCount, List<String> playerNames, {int boardSize = 13}) {
     final letterDist = LetterDistribution.arabic();
     final names = List<String>.from(playerNames);
     while (names.length < playerCount) {
@@ -113,7 +113,7 @@ class PassPlayProvider extends ChangeNotifier {
       name: 'Pass & Play',
       maxPlayers: playerCount,
       players: players,
-      board: Board.empty(),
+      board: Board.empty(size: boardSize),
       letterDistribution: letterDist,
       currentPlayerId: players.first.id,
       currentPlayerIndex: 0,
