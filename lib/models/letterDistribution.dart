@@ -121,6 +121,9 @@ class LetterDistribution {
   /// Returns a copy of the current tile bag (for display purposes)
   List<Tile> get tileBag => List.unmodifiable(_tileBag);
   
+  /// Returns a copy of all tiles in the distribution (for display purposes)
+  List<Tile> get allTiles => List.unmodifiable(_allTiles);
+  
   /// Returns the point value for a given letter
   int getLetterValue(String letter) {
     if (letter.isEmpty) return 0;

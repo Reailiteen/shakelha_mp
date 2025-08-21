@@ -12,6 +12,7 @@ import 'package:shakelha_mp/widgets/enemyUI.dart';
 import 'package:shakelha_mp/widgets/gameBG.dart';
 import 'package:shakelha_mp/widgets/boardUI.dart';
 import 'package:shakelha_mp/models/tile.dart';
+import 'package:shakelha_mp/widgets/letter_distribution_view.dart';
 
 class PassPlayScreen extends StatefulWidget {
   static const routeName = '/new-pass-play';
@@ -206,162 +207,211 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
 
   Widget _buildGameScreenContent(PassPlayProvider passPlayProvider) {
     return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            children: [
-              // Top Bar with word validation status - 10% of screen height
-              SizedBox(
-                height: constraints.maxHeight * 0.07,
-                child: Consumer<PassPlayProvider>(
-                  builder: (context, passPlay, child) {
-                    final room = passPlay.room!;
-                    String turnLabel = 'بانتظار اللاعبين...';
-                    bool myTurn = passPlay.isMyTurn;
-                    if (room.players.isNotEmpty) {
-                      final idx = room.currentPlayerIndex;
-                      final name = room.players[idx].nickname;
-                      turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
-                    }
-                    
-                    return Row(
-                      children: [
-                        Expanded(child: Topbar(currentText: turnLabel)),
-                        
-                        // Word validation toggle and status
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Validation status indicator
-                              if (passPlay.wordValidationEnabled && passPlay.validatedWords.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: _getValidationStatusColor(passPlay.validatedWords),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    '${passPlay.validatedWords.length}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              
-                              const SizedBox(width: 4),
-                              
-                              // Toggle button
-                              GestureDetector(
-                                onTap: () {
-                                  passPlay.toggleWordValidation();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        passPlay.wordValidationEnabled
-                                          ? 'تم تفعيل التحقق من الكلمات'
-                                          : 'تم إلغاء التحقق من الكلمات',
-                                      ),
-                                      duration: const Duration(seconds: 1),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: passPlay.wordValidationEnabled
-                                      ? const Color(0xFF4CAF50)
-                                      : Colors.grey[600],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    passPlay.wordValidationEnabled
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
+      child: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          // Detect swipe to the right (positive velocity)
+          if (details.primaryVelocity! > 300) {
+            _showLetterDistribution(context, passPlayProvider);
+          }
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                // Top Bar with word validation status - 10% of screen height
+                SizedBox(
+                  height: constraints.maxHeight * 0.07,
+                  child: Consumer<PassPlayProvider>(
+                    builder: (context, passPlay, child) {
+                      final room = passPlay.room!;
+                      String turnLabel = 'بانتظار اللاعبين...';
+                      bool myTurn = passPlay.isMyTurn;
+                      if (room.players.isNotEmpty) {
+                        final idx = room.currentPlayerIndex;
+                        final name = room.players[idx].nickname;
+                        turnLabel = myTurn ? 'دورك يا $name' : 'دور $name';
+                      }
+                      
+                      return Row(
+                        children: [
+                          Expanded(child: Topbar(currentText: turnLabel)),
+                          
+                          // Swipe hint for letter distribution
+                          GestureDetector(
+                            onTap: () => _showLetterDistribution(context, passPlay),
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.swipe_right,
                                     color: Colors.white,
                                     size: 16,
                                   ),
-                                ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'توزيع الحروف',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                          
+                          // Word validation toggle and status
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Validation status indicator
+                                if (passPlay.wordValidationEnabled && passPlay.validatedWords.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: _getValidationStatusColor(passPlay.validatedWords),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${passPlay.validatedWords.length}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                
+                                const SizedBox(width: 4),
+                                
+                                // Toggle button
+                                GestureDetector(
+                                  onTap: () {
+                                    passPlay.toggleWordValidation();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          passPlay.wordValidationEnabled
+                                            ? 'تم تفعيل التحقق من الكلمات'
+                                            : 'تم إلغاء التحقق من الكلمات',
+                                        ),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: passPlay.wordValidationEnabled
+                                        ? const Color(0xFF4CAF50)
+                                        : Colors.grey[600],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      passPlay.wordValidationEnabled
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-              SizedBox(height: constraints.maxHeight * 0.005),
-              
-              // Enemy UI - 12% of screen height
-              SizedBox(
-                height: constraints.maxHeight * 0.14,
-                child: Consumer<PassPlayProvider>(
-                  builder: (context, passPlay, child) {
-                    final room = passPlay.room!;
-                    final currentPlayerId = passPlay.currentPlayerId ?? room.players.first.id;
-                    final otherPlayer = room.players.firstWhere(
-                      (p) => p.id != currentPlayerId,
-                      orElse: () => room.players.last,
-                    );
-                    
-                    // Show opponent's actual rack tiles from room
-                    final opponentRack = otherPlayer.rack;
-                    
-                    return EnemyUi(
-                      name: otherPlayer.nickname,
-                      points: otherPlayer.score,
-                      image: "https://placehold.co/100x100",
-                      tiles: opponentRack,
-                    );
-                  },
+                SizedBox(height: constraints.maxHeight * 0.005),
+                
+                // Enemy UI - 12% of screen height
+                SizedBox(
+                  height: constraints.maxHeight * 0.14,
+                  child: Consumer<PassPlayProvider>(
+                    builder: (context, passPlay, child) {
+                      final room = passPlay.room!;
+                      final currentPlayerId = passPlay.currentPlayerId ?? room.players.first.id;
+                      final otherPlayer = room.players.firstWhere(
+                        (p) => p.id != currentPlayerId,
+                        orElse: () => room.players.last,
+                      );
+                      
+                      // Show opponent's actual rack tiles from room
+                      final opponentRack = otherPlayer.rack;
+                      
+                      return EnemyUi(
+                        name: otherPlayer.nickname,
+                        points: otherPlayer.score,
+                        image: "https://placehold.co/100x100",
+                        tiles: opponentRack,
+                      );
+                    },
+                  ),
                 ),
-              ),
-              
-              // Game Board - 50% of screen height (main content)
-              Expanded(
-                flex: 7,
-                child: BoardUI(boardSize: passPlayProvider.room?.board.size ?? 13),
-              ),
-              SizedBox(height: constraints.maxHeight * 0.01),
-              
-              // Player UI - 18% of screen height
-              SizedBox(
-                height: constraints.maxHeight * 0.17,
-                child: Consumer<PassPlayProvider>(
-                  builder: (context, passPlay, child) {
-                    final room = passPlay.room!;
-                    final currentPlayerId = passPlay.currentPlayerId ?? room.players.first.id;
-                    final currentPlayer = room.players.firstWhere(
-                      (p) => p.id == currentPlayerId,
-                      orElse: () => room.players.first,
-                    );
-                    
-                    // Get player's tiles from the room
-                    final playerTiles = currentPlayer.rack.isNotEmpty 
-                      ? currentPlayer.rack 
-                      : List.generate(7, (index) => 
-                          Tile(letter: 'أ', value: 1)
-                        );
-                    
-                    return PlayerUi(
-                      name: currentPlayer.nickname,
-                      points: currentPlayer.score,
-                      image: "https://placehold.co/100x100",
-                      tiles: playerTiles,
-                    );
-                  },
+                
+                // Game Board - 50% of screen height (main content)
+                Expanded(
+                  flex: 7,
+                  child: BoardUI(boardSize: passPlayProvider.room?.board.size ?? 13),
                 ),
-              ),
-              SizedBox(height: constraints.maxHeight * 0.005),
-            ],
-          );
-        },
+                SizedBox(height: constraints.maxHeight * 0.01),
+                
+                // Player UI - 18% of screen height
+                SizedBox(
+                  height: constraints.maxHeight * 0.17,
+                  child: Consumer<PassPlayProvider>(
+                    builder: (context, passPlay, child) {
+                      final room = passPlay.room!;
+                      final currentPlayerId = passPlay.currentPlayerId ?? room.players.first.id;
+                      final currentPlayer = room.players.firstWhere(
+                        (p) => p.id == currentPlayerId,
+                        orElse: () => room.players.first,
+                      );
+                      
+                      // Get player's tiles from the room
+                      final playerTiles = currentPlayer.rack.isNotEmpty 
+                        ? currentPlayer.rack 
+                        : List.generate(7, (index) => 
+                            Tile(letter: 'أ', value: 1)
+                          );
+                      
+                      return PlayerUi(
+                        name: currentPlayer.nickname,
+                        points: currentPlayer.score,
+                        image: "https://placehold.co/100x100",
+                        tiles: playerTiles,
+                      );
+                    },
+                  ),
+                ),
+                SizedBox(height: constraints.maxHeight * 0.005),
+              ],
+            );
+          },
+        ),
       ),
     );
+  }
+
+  /// Shows the letter distribution as a modal bottom sheet
+  void _showLetterDistribution(BuildContext context, PassPlayProvider passPlayProvider) {
+    // Get the letter distribution from the room if available
+    final letterDistribution = passPlayProvider.room?.letterDistribution;
+    showDialog(context: context, builder: (context) => LetterDistributionBottomSheet(
+        letterDistribution: letterDistribution,
+      ));
   }
   
   /// Get validation status color based on word states
