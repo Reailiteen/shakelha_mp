@@ -62,7 +62,10 @@ class GameProvider extends ChangeNotifier {
   
   /// Sets the current player ID
   void setCurrentPlayerId(String playerId) {
+    debugPrint('[setCurrentPlayerId] Setting current player ID: $playerId');
+    debugPrint('[setCurrentPlayerId] Previous ID: $_currentPlayerId');
     _currentPlayerId = playerId;
+    debugPrint('[setCurrentPlayerId] New ID set: $_currentPlayerId');
     _updateTurnStatus();
     notifyListeners();
   }
@@ -75,10 +78,27 @@ class GameProvider extends ChangeNotifier {
       if (idx >= 0 && idx < _room!.players.length) {
         currentTurnPlayerId = _room!.players[idx].id;
       }
+      
+      // Debug: Print all players and their IDs
+      debugPrint('[turn] All players: ${_room!.players.map((p) => '${p.id}:${p.socketId}').join(', ')}');
+      debugPrint('[turn] Current player index: $idx');
+      debugPrint('[turn] Current turn player ID: $currentTurnPlayerId');
+      debugPrint('[turn] My player ID: $_currentPlayerId');
+      
       _isMyTurn = currentTurnPlayerId == _currentPlayerId;
+      
+      // Automatically start placing tiles when it's our turn
+      if (_isMyTurn && !_isPlacingTiles) {
+        _isPlacingTiles = true;
+        debugPrint('[turn] Auto-starting placing tiles mode');
+      }
+      
       debugPrint('[turn] myId='+(_currentPlayerId??'?')+
           ', currentIdx='+idx.toString()+', idxId='+ (currentTurnPlayerId??'?')+
-          ', isMyTurn='+ _isMyTurn.toString());
+          ', isMyTurn='+ _isMyTurn.toString()+
+          ', isPlacingTiles='+ _isPlacingTiles.toString());
+    } else {
+      debugPrint('[turn] Cannot update turn status: room=${_room != null}, currentPlayerId=${_currentPlayerId != null}');
     }
   }
   
@@ -152,21 +172,42 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  /// Moves a pending tile from one position to another
+  void movePendingTile(Position fromPosition, Position toPosition) {
+    final index = _pendingPlacements.indexWhere((p) => p.position == fromPosition);
+    if (index != -1) {
+      final tile = _pendingPlacements[index];
+      _pendingPlacements.removeAt(index);
+      _pendingPlacements.add(PlacedTile(
+        tile: tile.tile,
+        position: toPosition,
+      ));
+      notifyListeners();
+    }
+  }
+
   /// Places a dragged tile onto the board (drag-and-drop support)
   void placeDraggedTile(Tile tile, Position position) {
+    debugPrint('[placeDraggedTile] Called with tile=$tile, position=$position');
+    debugPrint('[placeDraggedTile] Current state: isMyTurn=$isMyTurn, isPlacingTiles=$isPlacingTiles');
+    
     if (!isMyTurn) {
+      debugPrint('[placeDraggedTile] Rejected: Not your turn');
       _setErrorMessage('Not your turn');
       return;
     }
     if (_room?.board.getTileAt(position) != null) {
+      debugPrint('[placeDraggedTile] Rejected: Position already occupied');
       _setErrorMessage('Position already occupied!');
       return;
     }
     if (_pendingPlacements.any((p) => p.position == position)) {
+      debugPrint('[placeDraggedTile] Rejected: Position already has pending tile');
       _setErrorMessage('Position already has a pending tile!');
       return;
     }
 
+    debugPrint('[placeDraggedTile] Successfully placing tile');
     _pendingPlacements.add(PlacedTile(
       tile: tile.copyWith(isNewlyPlaced: true),
       position: position,

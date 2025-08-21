@@ -1,6 +1,6 @@
 {
-    "name": "mp_tictactoe",
-    "short_name": "mp_tictactoe",
+    "name": "shakelha_mp",
+    "short_name": "shakelha_mp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

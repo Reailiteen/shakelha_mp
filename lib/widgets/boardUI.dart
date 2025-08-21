@@ -3,72 +3,27 @@ import 'package:shakelha_mp/models/position.dart';
 import 'package:shakelha_mp/models/move.dart';
 import 'package:shakelha_mp/models/tile.dart';
 import 'package:shakelha_mp/provider/pass_play_provider.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 // Import board.dart to access word validation classes
 import 'package:shakelha_mp/models/board.dart';
 import 'package:shakelha_mp/provider/tile_theme_provider.dart';
 import 'package:shakelha_mp/widgets/tileUI.dart';
 
-// Grid cell widget for responsive board tiles
-class GridCell extends StatelessWidget {
-  final int row;
-  final int col;
-  final bool isSpecial;
-  final Color? specialColor;
-  
-  const GridCell({
-    Key? key,
-    required this.row,
-    required this.col,
-    this.isSpecial = false,
-    this.specialColor,
-  }) : super(key: key);
-  
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(0.2),
-      decoration: BoxDecoration(
-        color: isSpecial 
-            ? (specialColor ?? const Color(0xFFFFECD6))
-            : Colors.transparent,
-        border: Border.all(
-          color: const Color(0xFFAB8756),
-          width: 1,
-        ),
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: isSpecial
-          ? Center(
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFFFECD6),
-                      Color(0xFFEDDABE),
-                      Color(0xFFD9B991),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            )
-          : null,
-    );
-  }
+enum GameMode {
+  passAndPlay,
+  multiplayer,
 }
 
 class BoardUI extends StatefulWidget {
-  final int boardSize; // Add configurable board size
+  final int boardSize;
+  final GameMode gameMode;
   
   const BoardUI({
     Key? key, 
     this.boardSize = 13, // Default to 13x13
+    this.gameMode = GameMode.passAndPlay, // Default to pass & play
   }) : super(key: key);
   
   @override
@@ -80,7 +35,21 @@ class _BoardUIState extends State<BoardUI> {
   
   @override
   Widget build(BuildContext context) {
-    final passPlay = context.watch<PassPlayProvider>();
+    // Use the appropriate provider based on game mode
+    final passPlay = widget.gameMode == GameMode.passAndPlay 
+        ? context.watch<PassPlayProvider>()
+        : null;
+    final gameProvider = widget.gameMode == GameMode.multiplayer 
+        ? context.watch<GameProvider>()
+        : null;
+    
+    // Get the active provider
+    final activeProvider = widget.gameMode == GameMode.passAndPlay ? passPlay : gameProvider;
+    
+    if (activeProvider == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     
@@ -141,7 +110,6 @@ class _BoardUIState extends State<BoardUI> {
                   builder: (context, constraints) {
                     // Get exact grid dimensions for precise positioning
                     final gridWidth = constraints.maxWidth;
-                    final gridHeight = constraints.maxHeight;
                     final int gridSize = widget.boardSize;
                     final actualCellSize = (gridWidth - (gridSize - 1)) / gridSize; // 1px spacing between cells
                     
@@ -155,24 +123,22 @@ class _BoardUIState extends State<BoardUI> {
                         ...List.generate(gridSize * gridSize, (index) {
                           final row = index ~/ gridSize;
                           final col = index % gridSize;
-                          final positionKey = '$row-$col';
                           final pos = Position(row: row, col: col);
-                          final existingTile = passPlay.room?.board.getTileAt(pos);
-                          final pending = passPlay.pendingPlacements.firstWhere(
-                            (p) => p.position == pos,
-                            orElse: () => PlacedTile(tile: Tile(letter: ''), position: pos),
-                          );
+                          
+                          // Get tile data based on game mode
+                          final existingTile = _getExistingTile(activeProvider, pos);
+                          final pending = _getPendingTile(activeProvider, pos);
                           final hasPending = pending.tile.letter.isNotEmpty;
                           final displayLetter = existingTile?.letter ?? (hasPending ? pending.tile.letter : '');
                           final displayPoints = existingTile?.value ?? (hasPending ? pending.tile.value : 0);
                           
-                          final bool isSpecial = passPlay.room?.board.isSpecialPosition(pos) ?? false;
+                          final bool isSpecial = _isSpecialPosition(activeProvider, pos);
                           Color? specialColor;
                           String? multiplierText;
                           
                           if (isSpecial) {
                             // Get the actual multiplier to determine styling
-                            final multiplier = passPlay.room?.board.getMultiplierAt(pos);
+                            final multiplier = _getMultiplier(activeProvider, pos);
                             if (multiplier != null) {
                               if (multiplier.isWordMultiplier) {
                                 // Word multipliers get dark blue color
@@ -187,11 +153,11 @@ class _BoardUIState extends State<BoardUI> {
                           }
                           
                           // Check if this position is part of any validated words for visual feedback
-                          final wordsAtPosition = passPlay.validatedWords.where((word) =>
+                          final wordsAtPosition = _getValidatedWords(activeProvider).where((word) =>
                             word.positions.any((wordPos) => wordPos.row == row && wordPos.col == col) &&
                             // Only show feedback for words involving newly placed tiles
                             word.positions.any((pos) =>
-                              passPlay.pendingPlacements.any((placement) => placement.position == pos)
+                              _getPendingPlacements(activeProvider).any((placement) => placement.position == pos)
                             )
                           ).toList();
                           
@@ -208,15 +174,31 @@ class _BoardUIState extends State<BoardUI> {
                             height: actualCellSize,
                             child: DragTarget<Object>(
                               onWillAccept: (data) {
-                                if (!passPlay.isMyTurn) return false;
+                                final isMyTurn = _isMyTurn(activeProvider);
                                 final isEmpty = (existingTile == null) && !hasPending;
-                                return (data is Tile || data is PlacedTile) && isEmpty;
+                                final canAccept = (data is Tile || data is PlacedTile) && isEmpty;
+                                
+                                // Debug logging for multiplayer mode
+                                if (widget.gameMode == GameMode.multiplayer) {
+                                  print('[BoardUI] onWillAccept: data=$data, isMyTurn=$isMyTurn, isEmpty=$isEmpty, canAccept=$canAccept');
+                                  if (activeProvider is GameProvider) {
+                                    print('[BoardUI] GameProvider state: isMyTurn=${activeProvider.isMyTurn}, isPlacingTiles=${activeProvider.isPlacingTiles}');
+                                    print('[BoardUI] GameProvider room: currentPlayerIndex=${activeProvider.room?.currentPlayerIndex}, currentPlayerId=${activeProvider.currentPlayerId}');
+                                    print('[BoardUI] Room players: ${activeProvider.room?.players.map((p) => '${p.id}:${p.socketId}').join(', ')}');
+                                  }
+                                }
+                                
+                                if (!isMyTurn) {
+                                  print('[BoardUI] Rejected: Not my turn');
+                                  return false;
+                                }
+                                return canAccept;
                               },
                               onAccept: (data) {
                                 if (data is Tile) {
-                                  passPlay.placeDraggedTile(data, pos);
+                                  _placeDraggedTile(activeProvider, data, pos);
                                 } else if (data is PlacedTile) {
-                                  passPlay.movePendingTile(data.position, pos);
+                                  _movePendingTile(activeProvider, data.position, pos);
                                 }
                               },
                               builder: (context, candidate, rejected) {
@@ -274,7 +256,7 @@ class _BoardUIState extends State<BoardUI> {
                                   ],
                                 );
 
-                                if (hasPending && passPlay.isMyTurn) {
+                                if (hasPending && _isMyTurn(activeProvider)) {
                                   return Draggable<PlacedTile>(
                                     data: pending,
                                     feedback: Material(
@@ -285,7 +267,7 @@ class _BoardUIState extends State<BoardUI> {
                                     onDragEnd: (details) {},
                                     child: GestureDetector(
                                       onDoubleTap: () {
-                                        passPlay.removePendingPlacement(pos);
+                                        _removePendingPlacement(activeProvider, pos);
                                       },
                                       child: stack,
                                     ),
@@ -304,12 +286,12 @@ class _BoardUIState extends State<BoardUI> {
             ),
             
             // Word validation overlay using positioned containers (much more reliable than CustomPaint)
-            if (passPlay.wordValidationEnabled)
-              ..._generateWordOverlays(passPlay.validatedWords, passPlay.pendingPlacements, _cellSize),
+            if (_isWordValidationEnabled(activeProvider))
+              ..._generateWordOverlays(_getValidatedWords(activeProvider), _getPendingPlacements(activeProvider), _cellSize),
             
             // Scoring preview and validation feedback for the last placed tile
-            if (passPlay.pendingPlacements.isNotEmpty)
-              ..._generateScoringAndValidationOverlays(passPlay, _cellSize),
+            if (_getPendingPlacements(activeProvider).isNotEmpty)
+              ..._generateScoringAndValidationOverlays(activeProvider, _cellSize),
             
             // Debug grid overlay (disabled)
             if (false) // Set to true to enable debug grid
@@ -475,17 +457,17 @@ class _BoardUIState extends State<BoardUI> {
   }
 
   /// Generate positioned container overlays for scoring and validation feedback for the last placed tile
-  List<Widget> _generateScoringAndValidationOverlays(PassPlayProvider passPlay, double cellSize) {
-    final lastPlacedTile = passPlay.pendingPlacements.last;
+  List<Widget> _generateScoringAndValidationOverlays(dynamic provider, double cellSize) {
+    final lastPlacedTile = _getPendingPlacements(provider).last;
     final lastPlacedPosition = lastPlacedTile.position;
     
     final List<Widget> overlays = [];
     
     // Check validation status for ALL words involving the current placement
     // This includes the main word and any side words formed
-    final allRelevantWords = passPlay.validatedWords.where((word) =>
+    final allRelevantWords = _getValidatedWords(provider).where((word) =>
       word.positions.any((wordPos) => 
-        passPlay.pendingPlacements.any((placement) => placement.position == wordPos)
+        _getPendingPlacements(provider).any((placement) => placement.position == wordPos)
       )
     ).toList();
     
@@ -494,7 +476,7 @@ class _BoardUIState extends State<BoardUI> {
     final isValidPlacement = hasValidWord && !hasInvalidWord;
     
     // Calculate potential score for current placement
-    final potentialScore = _calculatePotentialScore(passPlay.pendingPlacements);
+    final potentialScore = _calculatePotentialScore(provider, _getPendingPlacements(provider));
     
     // Get tile position and size
     final position = _getTilePosition(lastPlacedPosition.row, lastPlacedPosition.col, cellSize);
@@ -534,7 +516,7 @@ class _BoardUIState extends State<BoardUI> {
                     ),
                   ),
                   // Show multiplier indicator if on special cell
-                  if (_hasMultiplier(passPlay.room?.board, lastPlacedPosition))
+                  if (_hasMultiplier(provider, lastPlacedPosition))
                     Container(
                       margin: const EdgeInsets.only(top: 2),
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -543,7 +525,7 @@ class _BoardUIState extends State<BoardUI> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        _getMultiplierText(passPlay.room?.board, lastPlacedPosition),
+                        _getMultiplierText(provider, lastPlacedPosition),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 8,
@@ -622,16 +604,15 @@ class _BoardUIState extends State<BoardUI> {
   }
   
   /// Calculate potential score for current tile placement
-  int _calculatePotentialScore(List<PlacedTile> pendingPlacements) {
+  int _calculatePotentialScore(dynamic provider, List<PlacedTile> pendingPlacements) {
     if (pendingPlacements.isEmpty) return 0;
     
     // Get the board from the provider to check multipliers
-    final passPlay = context.read<PassPlayProvider>();
-    final board = passPlay.room?.board;
+    final board = _getBoard(provider);
     
     if (board != null) {
       // Find ALL words that involve the pending placements
-      final allRelevantWords = passPlay.validatedWords.where((word) =>
+      final allRelevantWords = _getValidatedWords(provider).where((word) =>
         word.positions.any((wordPos) => 
           pendingPlacements.any((placement) => placement.position == wordPos)
         )
@@ -656,30 +637,32 @@ class _BoardUIState extends State<BoardUI> {
             );
             
             if (pendingTile.tile.letter.isNotEmpty) {
-              // This is a newly placed tile
+              // This is a newly placed tile - eligible for multipliers
               tileScore = pendingTile.tile.value;
+              
+              // Apply letter multipliers ONLY to newly placed tiles
+              if (board.isSpecialPosition(position)) {
+                final multiplier = board.getMultiplierAt(position);
+                if (multiplier != null && !multiplier.isWordMultiplier) {
+                  tileScore *= multiplier.value;
+                }
+              }
             } else {
-              // This is an existing tile on the board
+              // This is an existing tile on the board - NO multipliers, just base value
               final existingTile = board.getTileAt(position);
               if (existingTile != null) {
-                tileScore = existingTile.value;
-              }
-            }
-            
-            // Apply letter multipliers
-            if (board.isSpecialPosition(position)) {
-              final multiplier = board.getMultiplierAt(position);
-              if (multiplier != null && !multiplier.isWordMultiplier) {
-                tileScore *= multiplier.value;
+                tileScore = existingTile.value; // Base value only, no multipliers
               }
             }
             
             wordScore += tileScore;
           }
           
-          // Apply word multipliers
+          // Apply word multipliers ONLY if newly placed tiles are on multiplier cells
           for (final position in word.positions) {
-            if (board.isSpecialPosition(position)) {
+            // Check if this position has a newly placed tile AND is a special position
+            final hasNewTile = pendingPlacements.any((p) => p.position == position);
+            if (hasNewTile && board.isSpecialPosition(position)) {
               final multiplier = board.getMultiplierAt(position);
               if (multiplier != null && multiplier.isWordMultiplier) {
                 wordMultiplier *= multiplier.value;
@@ -729,14 +712,14 @@ class _BoardUIState extends State<BoardUI> {
   }
   
   /// Helper to check if a position has a letter multiplier
-  bool _hasMultiplier(Board? board, Position position) {
-    final multiplier = board?.getMultiplierAt(position);
+  bool _hasMultiplier(dynamic provider, Position position) {
+    final multiplier = _getMultiplier(provider, position);
     return multiplier != null && !multiplier.isWordMultiplier;
   }
   
   /// Helper to get the multiplier text for a position
-  String _getMultiplierText(Board? board, Position position) {
-    final multiplier = board?.getMultiplierAt(position);
+  String _getMultiplierText(dynamic provider, Position position) {
+    final multiplier = _getMultiplier(provider, position);
     if (multiplier == null) return '';
     return multiplier.isWordMultiplier ? 'x${multiplier.value}' : 'x${multiplier.value}';
   }
@@ -756,6 +739,135 @@ class _BoardUIState extends State<BoardUI> {
       return 1.5; // Slightly thicker for validated tiles
     }
     return 1.0; // Default width
+  }
+
+  // Helper to get the board from the active provider
+  Board? _getBoard(dynamic provider) {
+    if (provider is PassPlayProvider) {
+      return provider.room?.board;
+    } else if (provider is GameProvider) {
+      return provider.room?.board;
+    }
+    return null;
+  }
+  
+  // Helper methods to work with both providers
+  Tile? _getExistingTile(dynamic provider, Position pos) {
+    if (provider is PassPlayProvider) {
+      return provider.room?.board.getTileAt(pos);
+    } else if (provider is GameProvider) {
+      return provider.room?.board.getTileAt(pos);
+    }
+    return null;
+  }
+  
+  PlacedTile _getPendingTile(dynamic provider, Position pos) {
+    if (provider is PassPlayProvider) {
+      return provider.pendingPlacements.firstWhere(
+        (p) => p.position == pos,
+        orElse: () => PlacedTile(tile: Tile(letter: ''), position: pos),
+      );
+    } else if (provider is GameProvider) {
+      return provider.pendingPlacements.firstWhere(
+        (p) => p.position == pos,
+        orElse: () => PlacedTile(tile: Tile(letter: ''), position: pos),
+      );
+    }
+    return PlacedTile(tile: Tile(letter: ''), position: pos);
+  }
+  
+  bool _isSpecialPosition(dynamic provider, Position pos) {
+    if (provider is PassPlayProvider) {
+      return provider.room?.board.isSpecialPosition(pos) ?? false;
+    } else if (provider is GameProvider) {
+      return provider.room?.board.isSpecialPosition(pos) ?? false;
+    }
+    return false;
+  }
+  
+  CellMultiplier? _getMultiplier(dynamic provider, Position pos) {
+    if (provider is PassPlayProvider) {
+      return provider.room?.board.getMultiplierAt(pos);
+    } else if (provider is GameProvider) {
+      return provider.room?.board.getMultiplierAt(pos);
+    }
+    return null;
+  }
+  
+  List<ValidatedWord> _getValidatedWords(dynamic provider) {
+    if (provider is PassPlayProvider) {
+      return provider.validatedWords;
+    } else if (provider is GameProvider) {
+      // For multiplayer, we might not have word validation yet
+      // Return empty list for now, can be enhanced later
+      return [];
+    }
+    return [];
+  }
+  
+  List<PlacedTile> _getPendingPlacements(dynamic provider) {
+    if (provider is PassPlayProvider) {
+      return provider.pendingPlacements;
+    } else if (provider is GameProvider) {
+      return provider.pendingPlacements;
+    }
+    return [];
+  }
+  
+  bool _isWordValidationEnabled(dynamic provider) {
+    if (provider is PassPlayProvider) {
+      return provider.wordValidationEnabled;
+    } else if (provider is GameProvider) {
+      // For multiplayer, word validation might be handled differently
+      return false;
+    }
+    return false;
+  }
+  
+  bool _isMyTurn(dynamic provider) {
+    if (provider is PassPlayProvider) {
+      return provider.isMyTurn;
+    } else if (provider is GameProvider) {
+      final result = provider.isMyTurn;
+      print('[BoardUI] _isMyTurn for GameProvider: $result');
+      print('[BoardUI] GameProvider details: room=${provider.room != null}, currentPlayerId=${provider.currentPlayerId}, isMyTurn=${provider.isMyTurn}');
+      
+      if (provider.room != null) {
+        final currentIdx = provider.room!.currentPlayerIndex;
+        final currentTurnPlayer = currentIdx >= 0 && currentIdx < provider.room!.players.length 
+            ? provider.room!.players[currentIdx] 
+            : null;
+        print('[BoardUI] Room turn details: currentIdx=$currentIdx, currentTurnPlayer=${currentTurnPlayer?.id}, myId=${provider.currentPlayerId}');
+        print('[BoardUI] Turn comparison: ${currentTurnPlayer?.id} == ${provider.currentPlayerId} = ${currentTurnPlayer?.id == provider.currentPlayerId}');
+      }
+      
+      return result;
+    }
+    return false;
+  }
+  
+  void _placeDraggedTile(dynamic provider, Tile tile, Position position) {
+    if (provider is PassPlayProvider) {
+      provider.placeDraggedTile(tile, position);
+    } else if (provider is GameProvider) {
+      provider.placeDraggedTile(tile, position);
+    }
+  }
+  
+  void _movePendingTile(dynamic provider, Position fromPosition, Position toPosition) {
+    if (provider is PassPlayProvider) {
+      provider.movePendingTile(fromPosition, toPosition);
+    } else if (provider is GameProvider) {
+      provider.movePendingTile(fromPosition, toPosition);
+    }
+  }
+  
+  void _removePendingPlacement(dynamic provider, Position position) {
+    if (provider is PassPlayProvider) {
+      provider.removePendingPlacement(position);
+    } else if (provider is GameProvider) {
+      provider.removePendingPlacement(position);
+    }
   }
 }
 

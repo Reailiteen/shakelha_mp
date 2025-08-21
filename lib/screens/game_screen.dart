@@ -8,7 +8,7 @@ import 'package:shakelha_mp/data/arabic_dictionary_loader.dart';
 import 'package:shakelha_mp/models/room.dart';
 import 'package:shakelha_mp/widgets/topbar.dart';
 import 'package:shakelha_mp/widgets/multiplayer_enemyUI.dart';
-import 'package:shakelha_mp/widgets/multiplayer_boardUI.dart';
+import 'package:shakelha_mp/widgets/boardUI.dart';
 import 'package:shakelha_mp/widgets/multiplayer_playerUI.dart';
 import 'package:shakelha_mp/widgets/gameBG.dart';
 
@@ -146,45 +146,49 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildGameScreen(RoomDataProvider roomDataProvider) {
+    final room = roomDataProvider.room!;
+    final mySocketId = _socketMethods.socketClient.id;
+    final me = mySocketId == null
+        ? null
+        : room.players.firstWhere(
+            (p) => p.socketId == mySocketId,
+            orElse: () => room.players.first,
+          );
+    
     return ChangeNotifierProvider<GameProvider>(
-      create: (_) => GameProvider(),
+      create: (_) {
+        final game = GameProvider();
+        // Initialize immediately instead of using addPostFrameCallback
+        game.updateRoom(room);
+        game.setCurrentPlayerId((me ?? room.players.first).id);
+        return game;
+      },
       builder: (context, child) {
-        // Seed GameProvider with current Room and my player id
-        final game = context.read<GameProvider>();
-        final room = roomDataProvider.room!;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          game.updateRoom(room);
-          // Map my socket id to the corresponding Player.id
-          final mySocketId = _socketMethods.socketClient.id;
-          final me = mySocketId == null
-              ? null
-              : room.players.firstWhere(
-                  (p) => p.socketId == mySocketId,
-                  orElse: () => room.players.first,
-                );
-          game.setCurrentPlayerId((me ?? room.players.first).id);
-        });
-
-        // Keep GameProvider synced with RoomDataProvider on every socket update
-        final sync = Selector<RoomDataProvider, Room?>(
-          selector: (_, prov) => prov.room,
-          builder: (ctx, latestRoom, __) {
+        return Consumer<RoomDataProvider>(
+          builder: (context, roomProvider, child) {
+            // Sync GameProvider with latest room data
+            final latestRoom = roomProvider.room;
             if (latestRoom != null) {
-              ctx.read<GameProvider>().updateRoom(latestRoom);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                final gameProvider = context.read<GameProvider>();
+                gameProvider.updateRoom(latestRoom);
+                
+                // Update current player ID if needed
+                final mySocketId = _socketMethods.socketClient.id;
+                if (mySocketId != null) {
+                  final me = latestRoom.players.firstWhere(
+                    (p) => p.socketId == mySocketId,
+                    orElse: () => latestRoom.players.first,
+                  );
+                  gameProvider.setCurrentPlayerId(me.id);
+                }
+              });
             }
-            return const SizedBox.shrink();
-          },
-        );
 
-        return Scaffold(
-          body: Stack(
-            children: [
-              // Background
-              GameUi(child: _buildGameScreenContent(roomDataProvider)),
-              // Sync widget
-              sync,
-            ],
-          ),
+            return Scaffold(
+              body: GameUi(child: _buildGameScreenContent(roomDataProvider)),
+            );
+          },
         );
       },
     );
@@ -248,12 +252,12 @@ class _GameScreenState extends State<GameScreen> {
                 ),
               ),
               
-              // Game Board - Expanded main content
-              Expanded(
-                flex: 6,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: MultiplayerBoardUI(socketMethods: _socketMethods),
+              // Game Board - Fixed size content (not expanded)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: BoardUI(
+                  gameMode: GameMode.multiplayer,
+                  boardSize: room.board.size,
                 ),
               ),
               
