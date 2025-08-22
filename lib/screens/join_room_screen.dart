@@ -24,26 +24,51 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('[JoinRoomScreen] Initializing...');
     _socketMethods.joinRoomSuccessListener(context);
     _socketMethods.errorOccuredListener(context);
     _socketMethods.updateRoomListener(context);
-    // Lobby listeners
+    
+    // Listen for local validation errors
+    _socketMethods.socketClient.on('localError', (data) {
+      if (!mounted) return;
+      final errorType = data['type'] as String?;
+      final message = data['message'] as String?;
+      final details = data['details'] as String?;
+      
+      if (errorType == 'validation') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(message ?? 'Validation Error'),
+                if (details != null) Text(details, style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    });
+    
+    // Listen for rooms list updates
     _socketMethods.roomsListListener(context, (rooms) {
       if (!mounted) return;
-      debugPrint('[JoinRoomScreen] Received ${rooms.length} public rooms');
       setState(() {
         _publicRooms = rooms;
-        _loadingRooms = false;
       });
     });
+    
+    // Listen for rooms updated signal
     _socketMethods.roomsUpdatedListener(() {
-      // re-fetch when server signals changes
       if (!mounted) return;
-      debugPrint('[JoinRoomScreen] Rooms updated, re-fetching...');
-      _fetchRooms();
+      _socketMethods.listRooms();
     });
-    _fetchRooms();
+    
+    // Initial fetch of public rooms
+    _socketMethods.listRooms();
   }
 
   @override
@@ -119,9 +144,6 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                   const SizedBox(width: 12),
                   IconButton(
                     onPressed: () {
-                      debugPrint('[JoinRoomScreen] Manual refresh requested');
-                      debugPrint('[JoinRoomScreen] Socket connected: ${_socketMethods.socketClient.connected}');
-                      debugPrint('[JoinRoomScreen] Socket ID: ${_socketMethods.socketClient.id}');
                       _fetchRooms();
                     },
                     icon: const Icon(Icons.refresh),
@@ -147,9 +169,6 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                               final seats = r['seats'] as String? ?? '2';
                               final status = r['status'] as String? ?? 'open';
                               
-                              debugPrint('[JoinRoomScreen] Room $i: id=$id, name=$name, seats=$seats, status=$status');
-                              debugPrint('[JoinRoomScreen] Full room data: $r');
-                              
                               return ListTile(
                                 leading: const Icon(Icons.videogame_asset),
                                 title: Text(name),
@@ -162,8 +181,30 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                                       );
                                       return;
                                     }
-                                    debugPrint('[JoinRoomScreen] Joining room: $id with nickname: ${_nameController.text}');
-                                    debugPrint('[JoinRoomScreen] Room data being sent: {nickname: ${_nameController.text}, roomId: $id}');
+                                    
+                                    // Validate room ID before joining
+                                    if (!SocketMethods.isValidRoomId(id)) {
+                                      final errorMsg = SocketMethods.getRoomIdValidationError(id);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('معرّف غرفة غير صالح: $errorMsg'),
+                                              const Text(
+                                                'يجب أن يكون المعرّف 6 أحرف من الحروف والأرقام فقط',
+                                                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          duration: const Duration(seconds: 5),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    
                                     _socketMethods.joinRoom(_nameController.text, id);
                                   },
                                   child: const Text('انضمام'),
@@ -201,10 +242,52 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                     width: 120,
                     child: CustomButton(
                       onTap: () {
-                        debugPrint('[JoinRoomScreen] Manual join - Nickname: ${_nameController.text}, Room ID: ${_gameIdController.text}');
+                        if (_nameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('اكتب لقبك أولاً'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        if (_gameIdController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('اكتب معرّف الغرفة'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        final roomId = _gameIdController.text.trim();
+                        if (!SocketMethods.isValidRoomId(roomId)) {
+                          final errorMsg = SocketMethods.getRoomIdValidationError(roomId);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(errorMsg),
+                                  const Text(
+                                    'يجب أن يكون المعرّف 6 أحرف من الحروف والأرقام فقط (مثل: ABC123)',
+                                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: Colors.orange,
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+                          return;
+                        }
+                        
                         _socketMethods.joinRoom(
-                          _nameController.text,
-                          _gameIdController.text,
+                          _nameController.text.trim(),
+                          roomId,
                         );
                       },
                       text: 'انضمام',

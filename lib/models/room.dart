@@ -77,6 +77,15 @@ class Room {
   /// Socket ID of the host/creator (authorizes room settings)
   final String? hostSocketId;
 
+  /// Generates a valid room ID that matches server regex: /^[a-zA-Z0-9]{6}$/
+  static String generateValidRoomId() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    final random = Random();
+    return String.fromCharCodes(
+      Iterable.generate(6, (_) => chars.codeUnitAt(random.nextInt(chars.length)))
+    );
+  }
+
   /// Gets the current player
   Player? get currentPlayer => 
       currentPlayerId == null ? null : getPlayer(currentPlayerId!);
@@ -114,7 +123,7 @@ class Room {
     this.isPublic = false,
     this.status =   Status.open,
     this.hostSocketId,
-  })  : id = id ?? const Uuid().v4(),
+  })  : id = id ?? generateValidRoomId(),
         settings = settings ?? const RoomSettings(),
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
@@ -129,21 +138,16 @@ class Room {
     RoomSettings? settings,
   }) {
     final now = DateTime.now();
-    final board = Board.empty();
-    final letterDistribution = LetterDistribution.arabic();
-    
     return Room(
-      id: const Uuid().v4(),
       name: name,
       maxPlayers: maxPlayers,
       players: [creator],
-      board: board,
-      letterDistribution: letterDistribution,
-      settings: settings ?? const RoomSettings(),
+      board: Board.empty(size: ScrabbleGameLogic.boardSize),
+      letterDistribution: LetterDistribution.arabic(),
       createdBy: creator.id,
       createdAt: now,
       updatedAt: now,
-      status: Status.open,
+      settings: settings,
     );
   }
 

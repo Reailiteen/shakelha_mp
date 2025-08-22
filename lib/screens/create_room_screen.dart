@@ -6,6 +6,7 @@ import 'package:shakelha_mp/widgets/custom_button.dart';
 import 'package:shakelha_mp/widgets/custom_text.dart';
 import 'package:shakelha_mp/widgets/custom_textfield.dart';
 import 'package:shakelha_mp/widgets/game_page.dart';
+import 'package:shakelha_mp/screens/game_screen.dart';
 
 class CreateRoomScreen extends StatefulWidget {
   static String routeName = '/create-room';
@@ -26,20 +27,22 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('[CreateRoomScreen] Initializing...');
-    _socketMethods.createRoomSuccessListener(context);
-    _socketMethods.errorOccuredListener(context);
-    // Also toggle overlay off on success/error at the screen level
-    final socket = SocketClient.instance.socket!;
-    socket.on('createRoomSuccess', (data) {
-      debugPrint('[CreateRoomScreen] Received createRoomSuccess event: $data');
+    
+    // Listen for successful room creation
+    _socketMethods.socketClient.on('createRoomSuccess', (data) {
       if (!mounted) return;
-      setState(() => _creating = false);
+      Navigator.pushNamed(context, GameScreen.routeName);
     });
-    socket.on('errorOccurred', (data) {
-      debugPrint('[CreateRoomScreen] Received errorOccurred event: $data');
+    
+    // Listen for errors
+    _socketMethods.socketClient.on('errorOccurred', (data) {
       if (!mounted) return;
-      setState(() => _creating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(data is String ? data : 'Failed to create room'),
+          backgroundColor: Colors.red,
+        ),
+      );
     });
   }
 
@@ -129,18 +132,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                               }
                               setState(() => _creating = true);
                               
-                              // Debug: Log the create room request
-                              debugPrint('[CreateRoomScreen] Creating room with:');
-                              debugPrint('[CreateRoomScreen]   Nickname: ${_nicknameController.text.trim()}');
-                              debugPrint('[CreateRoomScreen]   Room Name: ${_roomNameController.text.trim().isEmpty ? 'غرفة' : _roomNameController.text.trim()}');
-                              debugPrint('[CreateRoomScreen]   Is Public: $_isPublic');
-                              debugPrint('[CreateRoomScreen]   Max Players: $_maxPlayers');
-                              
-                              // Debug: Check socket connection state
-                              final socket = SocketClient.instance.socket;
-                              debugPrint('[CreateRoomScreen] Socket state: ${socket?.connected}');
-                              debugPrint('[CreateRoomScreen] Socket ID: ${socket?.id}');
-                              
                               // Fire create request
                               _socketMethods.createRoom(
                                 _nicknameController.text.trim(),
@@ -153,7 +144,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                               Future.delayed(const Duration(seconds: 10), () {
                                 if (!mounted) return;
                                 if (_creating) {
-                                  debugPrint('[CreateRoomScreen] Timeout reached - no server response');
                                   setState(() => _creating = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('لا يوجد استجابة من الخادم. جرّب مرة أخرى.')),

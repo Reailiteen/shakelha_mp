@@ -30,9 +30,11 @@ class PlacedTile {
   /// Converts the placed tile to a JSON map
   Map<String, dynamic> toJson() {
     return {
-      'tile': tile.toJson(),
       'position': position.toJson(),
-      'isNewWord': isNewWord,
+      'tile': {
+        'letter': tile.letter,
+        'points': tile.value,
+      },
     };
   }
 }

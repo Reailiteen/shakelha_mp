@@ -178,18 +178,7 @@ class _BoardUIState extends State<BoardUI> {
                                 final isEmpty = (existingTile == null) && !hasPending;
                                 final canAccept = (data is Tile || data is PlacedTile) && isEmpty;
                                 
-                                // Debug logging for multiplayer mode
-                                if (widget.gameMode == GameMode.multiplayer) {
-                                  print('[BoardUI] onWillAccept: data=$data, isMyTurn=$isMyTurn, isEmpty=$isEmpty, canAccept=$canAccept');
-                                  if (activeProvider is GameProvider) {
-                                    print('[BoardUI] GameProvider state: isMyTurn=${activeProvider.isMyTurn}, isPlacingTiles=${activeProvider.isPlacingTiles}');
-                                    print('[BoardUI] GameProvider room: currentPlayerIndex=${activeProvider.room?.currentPlayerIndex}, currentPlayerId=${activeProvider.currentPlayerId}');
-                                    print('[BoardUI] Room players: ${activeProvider.room?.players.map((p) => '${p.id}:${p.socketId}').join(', ')}');
-                                  }
-                                }
-                                
                                 if (!isMyTurn) {
-                                  print('[BoardUI] Rejected: Not my turn');
                                   return false;
                                 }
                                 return canAccept;
@@ -374,21 +363,7 @@ class _BoardUIState extends State<BoardUI> {
   /// Get the current cell size being used by the board
   double get currentCellSize => _cellSize;
 
-  /// Debug method to print tile positions for troubleshooting
-  void debugTilePositions() {
-    print('=== Board Debug Info ===');
-    print('Current cell size: $_cellSize');
-    print('Board size: ${widget.boardSize}');
-    
-    // Print a few sample positions
-    for (int row = 0; row < 3; row++) {
-      for (int col = 0; col < 3; col++) {
-        final pos = _getTilePosition(row, col, _cellSize);
-        print('Tile at ($row, $col): left=${pos.dx.toStringAsFixed(2)}, top=${pos.dy.toStringAsFixed(2)}');
-      }
-    }
-    print('========================');
-  }
+  
 
   /// Generate positioned container overlays for word validation
   List<Widget> _generateWordOverlays(List<ValidatedWord> words, List<PlacedTile> pendingPlacements, double cellSize) {
@@ -829,16 +804,12 @@ class _BoardUIState extends State<BoardUI> {
       return provider.isMyTurn;
     } else if (provider is GameProvider) {
       final result = provider.isMyTurn;
-      print('[BoardUI] _isMyTurn for GameProvider: $result');
-      print('[BoardUI] GameProvider details: room=${provider.room != null}, currentPlayerId=${provider.currentPlayerId}, isMyTurn=${provider.isMyTurn}');
       
       if (provider.room != null) {
         final currentIdx = provider.room!.currentPlayerIndex;
         final currentTurnPlayer = currentIdx >= 0 && currentIdx < provider.room!.players.length 
             ? provider.room!.players[currentIdx] 
             : null;
-        print('[BoardUI] Room turn details: currentIdx=$currentIdx, currentTurnPlayer=${currentTurnPlayer?.id}, myId=${provider.currentPlayerId}');
-        print('[BoardUI] Turn comparison: ${currentTurnPlayer?.id} == ${provider.currentPlayerId} = ${currentTurnPlayer?.id == provider.currentPlayerId}');
       }
       
       return result;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shakelha_mp/models/tile.dart';
 import 'tileUI.dart';
 import 'package:shakelha_mp/provider/room_data_provider.dart';
+import 'package:shakelha_mp/provider/game_provider.dart';
 import 'package:shakelha_mp/resources/socket_methods.dart';
 import 'package:provider/provider.dart';
 
@@ -58,7 +59,7 @@ class MultiplayerPlayerUi extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: tiles.isEmpty 
                   ? [
-                      // Debug: Show empty rack message
+                      // Show empty rack message
                       Expanded(
                         child: Center(
                           child: Text(
@@ -75,10 +76,6 @@ class MultiplayerPlayerUi extends StatelessWidget {
                   : tiles.asMap().entries.map((entry) {
                       final tile = entry.value;
                       final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
-                      
-                      // Debug: Print tile info
-                      debugPrint('[MultiplayerPlayerUi] Rendering tile: ${tile.letter} (${tile.value} points) at index ${entry.key}');
-                      debugPrint('[MultiplayerPlayerUi] Tile size: $tileSize, screenWidth: $screenWidth');
                       
                       return Container(
                         child: Draggable<Tile>(
@@ -151,7 +148,10 @@ class MultiplayerPlayerUi extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: room != null ? () {
-                              socketMethods.submitMove(room.id);
+                              // Get placedTiles from GameProvider before submitting
+                              final gameProvider = Provider.of<GameProvider>(context, listen: false);
+                              final placedTiles = gameProvider.pendingPlacements.map((pt) => pt.toJson()).toList();
+                              socketMethods.submitMove(room.id, placedTiles: placedTiles);
                             } : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color.fromARGB(255, 127, 141, 25),

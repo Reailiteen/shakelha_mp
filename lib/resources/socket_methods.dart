@@ -19,6 +19,26 @@ class SocketMethods {
 
   Socket get socketClient => _socketClient;
 
+  /// Validates if a room ID matches the server's expected format
+  /// Server regex: /^[a-zA-Z0-9]{6}$/
+  static bool isValidRoomId(String roomId) {
+    return RegExp(r'^[a-zA-Z0-9]{6}$').hasMatch(roomId);
+  }
+
+  /// Gets a human-readable error message for invalid room IDs
+  static String getRoomIdValidationError(String roomId) {
+    if (roomId.isEmpty) {
+      return 'Room ID cannot be empty';
+    }
+    if (roomId.length != 6) {
+      return 'Room ID must be exactly 6 characters long (current: ${roomId.length})';
+    }
+    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(roomId)) {
+      return 'Room ID can only contain letters and numbers (no special characters)';
+    }
+    return 'Invalid room ID format';
+  }
+
   // EMITS
   /// Creates a new game room
   /// Optional params: isPublic, name, occupancy
@@ -30,38 +50,40 @@ class SocketMethods {
         'name': name,
         'occupancy': occupancy,
       };
-      debugPrint('[SocketMethods] Emitting createRoom: $payload');
       _socketClient.emit('createRoom', payload);
-    } else {
-      debugPrint('[SocketMethods] Cannot create room: nickname is empty');
     }
   }
 
   /// Joins an existing game room
   void joinRoom(String nickname, String roomId) async {
     if (nickname.isEmpty || roomId.isEmpty) {
-      debugPrint('[SocketMethods] Cannot join room: nickname or roomId is empty');
+      return;
+    }
+    
+    // Validate room ID format to match server regex: /^[a-zA-Z0-9]{6}$/
+    if (!isValidRoomId(roomId)) {
+      final errorMsg = getRoomIdValidationError(roomId);
+      // Emit a local error event that the UI can listen to
+      _socketClient.emit('localError', {
+        'type': 'validation',
+        'message': errorMsg,
+        'details': 'Room ID must be exactly 6 alphanumeric characters (e.g., ABC123, abc123, 123ABC)'
+      });
       return;
     }
     
     // Wait a bit for socket to be ready if not connected
     if (!_socketClient.connected) {
-      debugPrint('[SocketMethods] Socket not connected, waiting for connection...');
       int attempts = 0;
       while (!_socketClient.connected && attempts < 10) {
         await Future.delayed(const Duration(milliseconds: 500));
         attempts++;
-        debugPrint('[SocketMethods] Connection attempt $attempts, connected: ${_socketClient.connected}');
       }
       
       if (!_socketClient.connected) {
-        debugPrint('[SocketMethods] Failed to connect after $attempts attempts');
         return;
       }
     }
-    
-    debugPrint('[SocketMethods] Joining room: nickname=$nickname, roomId=$roomId');
-    debugPrint('[SocketMethods] Socket connected: ${_socketClient.connected}, Socket ID: ${_socketClient.id}');
     
     _socketClient.emit('joinRoom', {
       'nickname': nickname,
@@ -87,7 +109,6 @@ class SocketMethods {
   
   /// Passes the current turn
   void passTurn(String roomId) {
-    debugPrint('[emit passTurn] roomId=' + roomId);
     _socketClient.emit('passTurn', {
       'roomId': roomId,
     });
@@ -95,9 +116,33 @@ class SocketMethods {
   
   /// Submits the current move (optionally with placedTiles payload)
   void submitMove(String roomId, {List<Map<String, dynamic>>? placedTiles}) {
-    final payload = <String, dynamic>{'roomId': roomId};
-    if (placedTiles != null) payload['placedTiles'] = placedTiles;
-    debugPrint('[emit submitMove] roomId=' + roomId + (placedTiles == null ? '' : ', placedTiles=' + placedTiles.length.toString()));
+    final payload = <String, dynamic>{
+      'roomId': roomId,
+      'socketId': _socketClient.id, // Add socketId as server expects it
+    };
+    if (placedTiles != null) {
+      // Ensure proper serialization for server compatibility
+      final serializedTiles = placedTiles.map((tileData) {
+        // Ensure position and tile are properly serialized
+        final position = tileData['position'] as Map<String, dynamic>;
+        final tile = tileData['tile'] as Map<String, dynamic>;
+        
+        return {
+          'position': {
+            'row': position['row'] as int,
+            'col': position['col'] as int,
+          },
+          'tile': {
+            'letter': tile['letter'] as String,
+            'points': tile['points'] as int,
+          },
+        };
+      }).toList();
+      
+      payload['placedTiles'] = serializedTiles;
+      
+      debugPrint('[submitMove] Sending move to server: roomId=$roomId, tiles=${placedTiles.length}');
+    }
     _socketClient.emit('submitMove', payload);
   }
   
@@ -159,7 +204,6 @@ class SocketMethods {
 
   /// Reset the board state for a new game
   void resetBoard(String roomId) {
-    debugPrint('[SocketMethods] Resetting board for room: $roomId');
     _socketClient.emit('resetBoard', {
       'roomId': roomId,
     });
@@ -180,20 +224,18 @@ class SocketMethods {
       final players = validPlayersData.map<Map<String, dynamic>>((p) {
         final playerMap = Map<String, dynamic>.from(p as Map);
         
-        // Ensure required fields are never null or empty
+        // Map server fields to client fields - handle different field names
         final playerId = (playerMap['_id'] ?? playerMap['id'] ?? playerMap['socketID'] ?? '').toString();
         final socketId = (playerMap['socketID'] ?? playerMap['socketId'] ?? playerId).toString();
         final nickname = (playerMap['nickname'] ?? 'Player').toString();
-        
-        debugPrint('[normalizeRoom] Creating player data: id=$playerId, nickname=$nickname, socketId=$socketId');
         
         return {
           'id': playerId,
           'nickname': nickname,
           'socketId': socketId,
-          'score': playerMap['points'] ?? 0,
+          'score': playerMap['points'] ?? playerMap['score'] ?? 0,
           'type': 'human',
-          'rack': playerMap['currentLetters'] ?? playerMap['rack'] ?? <dynamic>[],
+          'rack': playerMap['currentLetters'] ?? playerMap['rack'] ?? playerMap['tiles'] ?? <dynamic>[],
           'moves': playerMap['moves'] ?? <dynamic>[],
           'isCurrentTurn': false,
           'hasPassed': false,
@@ -201,7 +243,7 @@ class SocketMethods {
         };
       }).toList();
       
-      // Handle different turn field formats
+      // Handle different turn field formats from server
       int currentIdx = 0;
       String createdBy = '';
       
@@ -210,9 +252,12 @@ class SocketMethods {
       } else if (map.containsKey('turn')) {
         final turnData = map['turn'] as Map?;
         if (turnData != null) {
-          final turnPlayerId = turnData['_id'] ?? turnData['id'] ?? turnData['socketID'] ?? '';
+          // Try different field names the server might use
+          final turnPlayerId = turnData['_id'] ?? turnData['id'] ?? turnData['socketID'] ?? turnData['socketId'] ?? '';
           currentIdx = players.indexWhere((p) => p['id'] == turnPlayerId);
-          if (currentIdx == -1) currentIdx = 0;
+          if (currentIdx == -1) {
+            currentIdx = 0;
+          }
         }
       }
       
@@ -223,20 +268,30 @@ class SocketMethods {
         createdBy = map['hostSocketId'] as String? ?? '';
       }
       
-      // Always start with a fresh board for new games
-      // Only preserve board if the game is actively in progress
-      Board normalizedBoard;
-      final status = map['status'] as String? ?? 'open';
-      final hasGameStarted = map['hasGameStarted'] as bool? ?? false;
-      
-      if (status == 'playing' && hasGameStarted && map['board'] != null) {
+             // Always start with a fresh board for new games
+       // Only preserve board if the game is actively in progress
+       Board normalizedBoard;
+       final status = map['status'] as String? ?? 'open';
+       final hasGameStarted = map['hasGameStarted'] as bool? ?? false;
+       
+       debugPrint('[updateRoomListener] 🔍 Status: $status, hasGameStarted: $hasGameStarted, board exists: ${map['board'] != null}');
+       
+       if (map['board'] != null) {
         // Game is in progress, preserve the board
         final boardData = map['board'] as Map<String, dynamic>;
-        final size = boardData['size'] as int? ?? 15;
-        final gridData = boardData['grid'] as List? ?? [];
+        
+                 // Handle different board field names from server
+         final size = boardData['size'] ?? boardData['boardSize'] as int? ?? 15;
+         final gridData = boardData['board'] ?? boardData['grid'] as List? ?? [];
+         
+         // Debug the board data structure
+         debugPrint('[updateRoomListener] 🔍 Board data: size=$size, gridData length=${gridData.length}');
+         debugPrint('[updateRoomListener] 🔍 Raw gridData: $gridData');
         
         final grid = List.generate(size, (r) {
-          if (r >= gridData.length) return List.filled(size, null);
+          if (r >= gridData.length) {
+            return List.filled(size, null);
+          }
           final rowData = gridData[r] as List? ?? [];
           return List.generate(size, (c) {
             if (c >= rowData.length) return null;
@@ -258,14 +313,22 @@ class SocketMethods {
             }
             return null;
           });
-        });
-        normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
-        debugPrint('[normalizeRoom] Preserving existing board with ${normalizedBoard.getAllTiles().length} tiles');
-      } else {
-        // New game or room not started, use empty board
-        normalizedBoard = Board.empty(size: 15);
-        debugPrint('[normalizeRoom] Starting with fresh empty board');
-      }
+                 });
+         
+         // Count actual tiles found in the grid
+         int tileCount = 0;
+         for (int r = 0; r < size; r++) {
+           for (int c = 0; c < size; c++) {
+             if (grid[r][c] != null) tileCount++;
+           }
+         }
+         debugPrint('[updateRoomListener] 🔍 Found $tileCount tiles in grid');
+         
+         normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
+       } else {
+         // New game or room not started, use empty board
+         normalizedBoard = Board.empty(size: 15);
+       }
 
       final normalized = {
         'id': (map['_id'] ?? map['id'] ?? '').toString(),
@@ -287,14 +350,8 @@ class SocketMethods {
         'hostSocketId': (map['hostSocketId'] ?? '') as String,
       };
       
-      debugPrint('[normalizeRoom] Successfully normalized room data');
-      debugPrint('[normalizeRoom] Room ID: ${normalized['id']}');
-      debugPrint('[normalizeRoom] Players count: ${normalized['players'].length}');
-      debugPrint('[normalizeRoom] Max players: ${normalized['maxPlayers']}');
-      debugPrint('[normalizeRoom] Status: ${normalized['status']}');
       return normalized;
-    } catch (e) {
-      debugPrint('[normalizeRoom] Error normalizing room data: $e');
+    } catch (e, stackTrace) {
       // Return a minimal valid room structure as fallback
       return {
         'id': (map['_id'] ?? map['id'] ?? 'fallback').toString(),
@@ -317,24 +374,20 @@ class SocketMethods {
       };
     }
   }
+  
   void createRoomSuccessListener(BuildContext context) {
     _socketClient.on('createRoomSuccess', (roomData) {
       try {
         // Check if context is still mounted before proceeding
         if (!context.mounted) {
-          debugPrint('[createRoomSuccess] Context no longer mounted, skipping room creation');
           return;
         }
-        
-        debugPrint('[createRoomSuccess] raw payload: $roomData');
         
         // Normalize the room data
         Map<String, dynamic> normalizedData;
         try {
           normalizedData = _normalizeRoom(roomData);
-          debugPrint('[createRoomSuccess] Normalized data: ${normalizedData.keys}');
         } catch (normalizeError) {
-          debugPrint('[createRoomSuccess] Error normalizing room data: $normalizeError');
           // Try to create a minimal room structure
           normalizedData = {
             'id': (roomData['_id'] ?? roomData['id'] ?? 'fallback').toString(),
@@ -360,15 +413,8 @@ class SocketMethods {
         // Create Room object from normalized data
         Room room;
         try {
-          debugPrint('[createRoomSuccess] About to create Room from normalized data');
-          debugPrint('[createRoomSuccess] Players data type: ${normalizedData['players'].runtimeType}');
-          debugPrint('[createRoomSuccess] First player data: ${normalizedData['players'].isNotEmpty ? normalizedData['players'].first : 'No players'}');
-          
           room = Room.fromJson(normalizedData);
-          debugPrint('[createRoomSuccess] Room created: id=${room.id}, players=${room.players.length}, started=${room.hasGameStarted}');
         } catch (roomError) {
-          debugPrint('[createRoomSuccess] Error creating Room object: $roomError');
-          debugPrint('[createRoomSuccess] Normalized data that failed: $normalizedData');
           return;
         }
         
@@ -376,43 +422,30 @@ class SocketMethods {
         if (room.players.every((p) => p.rack.isEmpty)) {
           // Ensure letter distribution has tiles
           var ld = room.letterDistribution;
-          debugPrint('[createRoomSuccess] Letter distribution tiles remaining: ${ld.tilesRemaining}');
           
           if (ld.tilesRemaining == 0) {
-            debugPrint('[createRoomSuccess] Letter distribution is empty, initializing with Arabic tiles');
             ld = LetterDistribution.arabic();
-            debugPrint('[createRoomSuccess] After initialization, tiles remaining: ${ld.tilesRemaining}');
           }
           
           final List<Player> players = room.players;
           final newPlayers = players.map((p) {
             final need = 7 - p.rack.length;
-            debugPrint('[createRoomSuccess] Player ${p.nickname} needs $need tiles');
             final List<Tile> drawn = need > 0 ? ld.drawTiles(need) : <Tile>[];
             final owned = drawn.map((t) => t.copyWith(ownerId: p.id)).toList();
-            debugPrint('[createRoomSuccess] Player ${p.nickname} received tiles: ${owned.map((t) => t.letter).join(', ')}');
             return p.updateRack([...p.rack, ...owned]);
           }).toList();
           room = room.copyWith(players: newPlayers, letterDistribution: ld);
-          debugPrint('[createRoomSuccess] After dealing, letter distribution has ${ld.tilesRemaining} tiles remaining');
-        }
-        
-        for (final p in room.players) {
-          debugPrint('[createRoomSuccess] rack ${p.nickname} size=${p.rack.length}');
         }
         
         // Double-check context is still mounted before updating provider and navigating
         if (!context.mounted) {
-          debugPrint('[createRoomSuccess] Context no longer mounted after processing, cannot navigate');
           return;
         }
         
         Provider.of<RoomDataProvider>(context, listen: false).updateRoom(room);
         Navigator.pushNamed(context, GameScreen.routeName);
-        debugPrint('[createRoomSuccess] Successfully navigated to game screen');
       } catch (e) {
-        debugPrint('[createRoomSuccess] Error creating room: $e');
-        debugPrint('[createRoomSuccess] Stack trace: ${StackTrace.current}');
+        // Handle error silently
       }
     });
   }
@@ -422,54 +455,39 @@ class SocketMethods {
       try {
         // Check if context is still mounted before proceeding
         if (!context.mounted) {
-          debugPrint('[joinRoomSuccess] Context no longer mounted, skipping room join');
           return;
         }
         
-        debugPrint('[joinRoomSuccess] raw payload: ' + roomData.toString());
         var room = Room.fromJson(_normalizeRoom(roomData));
-        debugPrint('[joinRoomSuccess] normalized: id=' + room.id +
-            ', players=' + room.players.length.toString() +
-            ', started=' + room.hasGameStarted.toString());
+        
         // Ensure racks are dealt at join time if missing
         if (room.players.any((p) => p.rack.isEmpty)) {
           // Ensure letter distribution has tiles
           var ld = room.letterDistribution;
-          debugPrint('[joinRoomSuccess] Letter distribution tiles remaining: ${ld.tilesRemaining}');
           
           if (ld.tilesRemaining == 0) {
-            debugPrint('[joinRoomSuccess] Letter distribution is empty, initializing with Arabic tiles');
             ld = LetterDistribution.arabic();
-            debugPrint('[joinRoomSuccess] After initialization, tiles remaining: ${ld.tilesRemaining}');
           }
           
           final List<Player> players = room.players;
           final newPlayers = players.map((p) {
             final need = 7 - p.rack.length;
-            debugPrint('[joinRoomSuccess] Player ${p.nickname} needs $need tiles');
             final List<Tile> drawn = need > 0 ? ld.drawTiles(need) : <Tile>[];
             final owned = drawn.map((t) => t.copyWith(ownerId: p.id)).toList();
-            debugPrint('[joinRoomSuccess] Player ${p.nickname} received tiles: ${owned.map((t) => t.letter).join(', ')}');
             return p.updateRack([...p.rack, ...owned]);
           }).toList();
           room = room.copyWith(players: newPlayers, letterDistribution: ld);
-          debugPrint('[joinRoomSuccess] After dealing, letter distribution has ${ld.tilesRemaining} tiles remaining');
-        }
-        for (final p in room.players) {
-          debugPrint('[joinRoomSuccess] rack ${p.nickname} size=' + p.rack.length.toString());
         }
         
         // Double-check context is still mounted before updating provider and navigating
         if (!context.mounted) {
-          debugPrint('[joinRoomSuccess] Context no longer mounted after processing, cannot navigate');
           return;
         }
         
         Provider.of<RoomDataProvider>(context, listen: false).updateRoom(room);
         Navigator.pushNamed(context, GameScreen.routeName);
-        debugPrint('[joinRoomSuccess] Successfully navigated to game screen');
       } catch (e) {
-        debugPrint('[joinRoomSuccess] Error joining room: $e');
+        // Handle error silently
       }
     });
   }
@@ -488,8 +506,6 @@ class SocketMethods {
 
   void errorOccuredListener(BuildContext context) {
     _socketClient.on('errorOccurred', (data) {
-      debugPrint('[socket errorOccurred] payload: ' + data.toString());
-      
       // Extract error message from different possible formats
       String errorMessage = 'حدث خطأ';
       if (data is String) {
@@ -497,8 +513,6 @@ class SocketMethods {
       } else if (data is Map) {
         errorMessage = data['message'] ?? data['error'] ?? data['msg'] ?? 'حدث خطأ غير معروف';
       }
-      
-      debugPrint('[socket errorOccurred] parsed error: $errorMessage');
       
       // Check if context is still mounted before showing snackbar
       if (context.mounted) {
@@ -548,13 +562,15 @@ class SocketMethods {
     _socketClient.on('updateRoom', (roomData) {
       // Check if context is still mounted before accessing Provider
       if (!context.mounted) {
-        debugPrint('[updateRoomListener] Context no longer mounted, skipping update');
         return;
       }
       
       try {
+                 debugPrint('[updateRoomListener] 📡 Room update received, board tiles: ${(roomData['board'] as Map?)?['board']?.length ?? 0}');
+        
         var incoming = Room.fromJson(_normalizeRoom(roomData));
         final provider = Provider.of<RoomDataProvider>(context, listen: false);
+        
         final current = provider.room;
         if (current != null) {
           // Merge: prefer incoming board and racks; keep local bag; fallback to existing rack only if incoming has none
@@ -581,37 +597,29 @@ class SocketMethods {
           if (incoming.players.any((p) => p.rack.isEmpty)) {
             // Ensure letter distribution has tiles
             var ld = incoming.letterDistribution;
-            debugPrint('[updateRoomListener] Letter distribution tiles remaining: ${ld.tilesRemaining}');
             
             if (ld.tilesRemaining == 0) {
-              debugPrint('[updateRoomListener] Letter distribution is empty, initializing with Arabic tiles');
               ld = LetterDistribution.arabic();
-              debugPrint('[updateRoomListener] After initialization, tiles remaining: ${ld.tilesRemaining}');
             }
             
             final dealt = incoming.players.map((p) {
               if (p.rack.isEmpty) {
                 final need = 7;
-                debugPrint('[updateRoomListener] Dealing $need tiles to player ${p.nickname}');
                 final drawn = ld.drawTiles(need);
                 final owned = drawn.map((t) => t.copyWith(ownerId: p.id)).toList();
-                debugPrint('[updateRoomListener] Player ${p.nickname} now has ${owned.length} tiles: ${owned.map((t) => t.letter).join(', ')}');
                 return p.updateRack(owned);
               }
-              debugPrint('[updateRoomListener] Player ${p.nickname} already has ${p.rack.length} tiles');
               return p;
             }).toList();
             
             incoming = incoming.copyWith(players: dealt, letterDistribution: ld);
-            debugPrint('[updateRoomListener] After dealing, letter distribution has ${ld.tilesRemaining} tiles remaining');
-          }
-          for (final p in incoming.players) {
-            debugPrint('[updateRoom merge] rack ${p.nickname} size=' + p.rack.length.toString());
           }
         }
         provider.updateRoom(incoming);
+        
+        debugPrint('[updateRoomListener] ✅ Room updated, final board tiles: ${incoming.board.getAllTiles().length}');
       } catch (e) {
-        debugPrint('[updateRoomListener] Error updating room: $e');
+        // Handle error silently
       }
     });
   }
@@ -622,7 +630,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[hoverUpdateListener] Context no longer mounted, skipping hover update');
           return;
         }
         
@@ -636,7 +643,7 @@ class SocketMethods {
               .updateRemoteHover(socketId: socketId, letter: letter, row: row, col: col);
         }
       } catch (e) {
-        debugPrint('[hoverUpdateListener] Error updating hover: $e');
+        // Handle error silently
       }
     });
 
@@ -644,7 +651,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[hoverClearedListener] Context no longer mounted, skipping hover clear');
           return;
         }
         
@@ -654,7 +660,7 @@ class SocketMethods {
               .clearRemoteHover(socketId);
         }
       } catch (e) {
-        debugPrint('[hoverClearedListener] Error clearing hover: $e');
+        // Handle error silently
       }
     });
   }
@@ -665,7 +671,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[tilesPlacedListener] Context no longer mounted, skipping tiles placed update');
           return;
         }
         
@@ -690,16 +695,12 @@ class SocketMethods {
             final incomingBoardTiles = incoming.board.getAllTiles();
             final tilesAdded = incomingBoardTiles.length - currentBoardTiles.length;
             
-            debugPrint('[tilesPlacedListener] Board tiles: ${currentBoardTiles.length} -> ${incomingBoardTiles.length} (+$tilesAdded)');
-            debugPrint('[tilesPlacedListener] Current player rack: ${currentPlayer.rack.length} tiles');
-            
             if (tilesAdded > 0) {
               // Remove the placed tiles from the current player's rack
               final updatedPlayers = current.players.map((p) {
                 if (p.id == currentPlayer.id) {
                   // Remove tiles from rack based on how many were placed
                   final newRack = p.rack.take(p.rack.length - tilesAdded).toList();
-                  debugPrint('[tilesPlacedListener] Updated player ${p.nickname} rack: ${p.rack.length} -> ${newRack.length}');
                   return p.updateRack(newRack);
                 }
                 return p;
@@ -711,14 +712,12 @@ class SocketMethods {
                 letterDistribution: current.letterDistribution,
                 players: updatedPlayers,
               );
-              
-              debugPrint('[tilesPlacedListener] Updated board and player racks after tile placement');
             }
           }
         }
         provider.updateRoom(incoming);
       } catch (e) {
-        debugPrint('[tilesPlacedListener] Error updating tiles placed: $e');
+        // Handle error silently
       }
     });
   }
@@ -729,37 +728,61 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[moveSubmittedListener] Context no longer mounted, skipping move submitted update');
           return;
         }
         
-        var incoming = Room.fromJson(_normalizeRoom(data['room']));
-        final provider = Provider.of<RoomDataProvider>(context, listen: false);
-        final current = provider.room;
-        if (current != null) {
-          final mergedPlayers = incoming.players.map((pIn) {
-            final existing = current.players.firstWhere(
-              (p) => p.id == pIn.id,
-              orElse: () => pIn,
+        debugPrint('[moveSubmittedListener] Received move submission response: $data');
+        
+        // Check if the data contains room information
+        if (data is Map && data.containsKey('room')) {
+          var incoming = Room.fromJson(_normalizeRoom(data['room']));
+          final provider = Provider.of<RoomDataProvider>(context, listen: false);
+          final current = provider.room;
+          
+          if (current != null) {
+            final mergedPlayers = incoming.players.map((pIn) {
+              final existing = current.players.firstWhere(
+                (p) => p.id == pIn.id,
+                orElse: () => pIn,
+              );
+              final useIncomingRack = pIn.rack.isNotEmpty;
+              final rack = useIncomingRack ? pIn.rack : existing.rack;
+              return pIn.copyWith(
+                rack: rack,
+                score: math.max(pIn.score, existing.score),
+              );
+            }).toList();
+            
+            // Always use the incoming board for moveSubmitted to ensure proper sync
+            final boardToUse = incoming.board;
+            
+            incoming = incoming.copyWith(
+              board: boardToUse,
+              letterDistribution: current.letterDistribution,
+              players: mergedPlayers,
             );
-            final useIncomingRack = pIn.rack.isNotEmpty;
-            final rack = useIncomingRack ? pIn.rack : existing.rack;
-            return pIn.copyWith(
-              rack: rack,
-              score: math.max(pIn.score, existing.score),
-            );
-          }).toList();
-          final incomingHasTiles = incoming.board.getAllTiles().isNotEmpty;
-          final boardToUse = incomingHasTiles ? incoming.board : current.board;
-          incoming = incoming.copyWith(
-            board: boardToUse,
-            letterDistribution: current.letterDistribution,
-            players: mergedPlayers,
-          );
+          }
+          
+          provider.updateRoom(incoming);
+        } else {
+          // The server is only sending notification, not room data
+          // We need to explicitly request the updated room state
+          final provider = Provider.of<RoomDataProvider>(context, listen: false);
+          final current = provider.room;
+          if (current != null) {
+            // Try multiple approaches to get room data
+            _socketClient.emit('getRoomUpdate', {'roomId': current.id});
+            _socketClient.emit('joinRoom', {'roomId': current.id, 'socketId': _socketClient.id});
+            
+            // Also try to parse any room data that might be in the notification
+            if (data is Map && data.containsKey('roomId')) {
+              final roomId = data['roomId'] as String;
+              _socketClient.emit('getRoomUpdate', {'roomId': roomId});
+            }
+          }
         }
-        provider.updateRoom(incoming);
       } catch (e) {
-        debugPrint('[moveSubmittedListener] Error updating move submitted: $e');
+        // Handle error silently
       }
     });
   }
@@ -770,7 +793,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[turnPassedListener] Context no longer mounted, skipping turn passed update');
           return;
         }
         
@@ -797,7 +819,7 @@ class SocketMethods {
         }
         provider.updateRoom(incoming);
       } catch (e) {
-        debugPrint('[turnPassedListener] Error updating turn passed: $e');
+        // Handle error silently
       }
     });
   }
@@ -808,7 +830,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[tilesExchangedListener] Context no longer mounted, skipping tiles exchanged update');
           return;
         }
         
@@ -836,7 +857,7 @@ class SocketMethods {
         }
         provider.updateRoom(incoming);
       } catch (e) {
-        debugPrint('[tilesExchangedListener] Error updating tiles exchanged: $e');
+        // Handle error silently
       }
     });
   }
@@ -847,7 +868,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[gameOverListener] Context no longer mounted, skipping game over update');
           return;
         }
         
@@ -875,7 +895,7 @@ class SocketMethods {
         }
         provider.updateRoom(incoming);
       } catch (e) {
-        debugPrint('[gameOverListener] Error updating game over: $e');
+        // Handle error silently
       }
     });
   }
@@ -886,11 +906,8 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[boardResetListener] Context no longer mounted, skipping board reset update');
           return;
         }
-        
-        debugPrint('[boardResetListener] Board reset event received: $data');
         
         // Reset the local room state to start fresh
         final provider = Provider.of<RoomDataProvider>(context, listen: false);
@@ -912,10 +929,9 @@ class SocketMethods {
           );
           
           provider.updateRoom(resetRoom);
-          debugPrint('[boardResetListener] Board reset completed, starting fresh game');
         }
       } catch (e) {
-        debugPrint('[boardResetListener] Error resetting board: $e');
+        // Handle error silently
       }
     });
   }
@@ -923,7 +939,6 @@ class SocketMethods {
   /// Listens for error messages
   void errorOccurredListener(BuildContext context) {
     _socketClient.on('errorOccurred', (data) {
-      debugPrint('[socket errorOccurred] payload: ' + data.toString());
       try {
         if (data is String) {
           showSnackBar(context, data);
@@ -944,7 +959,6 @@ class SocketMethods {
       try {
         // Check if context is still mounted before accessing Provider
         if (!context.mounted) {
-          debugPrint('[turnChangedListener] Context no longer mounted, skipping turn changed update');
           return;
         }
         
@@ -952,7 +966,66 @@ class SocketMethods {
         final currentPlayerId = data['currentPlayerId'] as String;
         roomDataProvider.setCurrentPlayer(currentPlayerId);
       } catch (e) {
-        debugPrint('[turnChangedListener] Error updating turn changed: $e');
+        // Handle error silently
+      }
+    });
+  }
+  
+  /// Listens for board updates specifically
+  void boardUpdateListener(BuildContext context) {
+    _socketClient.on('boardUpdate', (data) {
+      try {
+        // Check if context is still mounted before accessing Provider
+        if (!context.mounted) {
+          return;
+        }
+        
+        if (data is Map && data.containsKey('room')) {
+          var incoming = Room.fromJson(_normalizeRoom(data['room']));
+          final provider = Provider.of<RoomDataProvider>(context, listen: false);
+          final current = provider.room;
+          
+          if (current != null) {
+            // Always use the incoming board for board updates
+            incoming = incoming.copyWith(
+              letterDistribution: current.letterDistribution,
+              players: current.players, // Keep existing players
+            );
+            
+            provider.updateRoom(incoming);
+          }
+        }
+      } catch (e) {
+        // Handle error silently
+      }
+    });
+  }
+  
+  /// Listens for room update responses (fallback for when moveSubmitted doesn't include room data)
+  void roomUpdateResponseListener(BuildContext context) {
+    _socketClient.on('roomUpdateResponse', (data) {
+      try {
+        // Check if context is still mounted before accessing Provider
+        if (!context.mounted) {
+          return;
+        }
+        
+        if (data is Map && data.containsKey('room')) {
+          var incoming = Room.fromJson(_normalizeRoom(data['room']));
+          final provider = Provider.of<RoomDataProvider>(context, listen: false);
+          final current = provider.room;
+          
+          if (current != null) {
+            // Use the incoming room data but preserve local letter distribution
+            incoming = incoming.copyWith(
+              letterDistribution: current.letterDistribution,
+            );
+            
+            provider.updateRoom(incoming);
+          }
+        }
+      } catch (e) {
+        // Handle error silently
       }
     });
   }
@@ -969,6 +1042,8 @@ class SocketMethods {
     _socketClient.off('gameOver');
     _socketClient.off('boardReset');
     _socketClient.off('turnChanged');
+    _socketClient.off('boardUpdate');
+    _socketClient.off('roomUpdateResponse');
     _socketClient.off('errorOccurred');
     _socketClient.off('updatePlayers');
     _socketClient.off('roomsList');
@@ -976,6 +1051,5 @@ class SocketMethods {
     _socketClient.off('lobbyReadyUpdate');
     _socketClient.off('createRoomSuccess');
     _socketClient.off('joinRoomSuccess');
-    debugPrint('[SocketMethods] All listeners removed');
   }
 }

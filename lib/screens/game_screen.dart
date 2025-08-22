@@ -34,14 +34,13 @@ class _GameScreenState extends State<GameScreen> {
     _socketMethods.hoverUpdateListener(context);
     _socketMethods.tilesPlacedListener(context);
     _socketMethods.moveSubmittedListener(context);
+    _socketMethods.boardUpdateListener(context);
+    _socketMethods.roomUpdateResponseListener(context);
     _socketMethods.turnPassedListener(context);
     _socketMethods.tilesExchangedListener(context);
     _socketMethods.errorOccurredListener(context);
     _socketMethods.turnChangedListener(context);
     _socketMethods.boardResetListener(context);
-    // _socketMethods.updatePlayersStateListener(context);
-    // _socketMethods.pointIncreaseListener(context);
-    // _socketMethods.endGameListener(context);
   }
 
   @override
@@ -265,14 +264,6 @@ class _GameScreenState extends State<GameScreen> {
               SizedBox(
                 height: constraints.maxHeight * 0.21,
                 child: Builder(builder: (context) {
-                  // Debug: Print player and tile information
-                  debugPrint('[GameScreen] Player UI Debug:');
-                  debugPrint('[GameScreen]   me: ${me?.nickname ?? 'null'}');
-                  debugPrint('[GameScreen]   me?.rack: ${me?.rack.length ?? 0} tiles');
-                  if (me?.rack.isNotEmpty == true) {
-                    debugPrint('[GameScreen]   First tile: ${me!.rack.first.letter} (${me.rack.first.value} points)');
-                  }
-                  
                   return MultiplayerPlayerUi(
                     name: me?.nickname ?? 'Player',
                     points: me?.score ?? 0,

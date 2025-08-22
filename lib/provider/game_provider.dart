@@ -62,10 +62,7 @@ class GameProvider extends ChangeNotifier {
   
   /// Sets the current player ID
   void setCurrentPlayerId(String playerId) {
-    debugPrint('[setCurrentPlayerId] Setting current player ID: $playerId');
-    debugPrint('[setCurrentPlayerId] Previous ID: $_currentPlayerId');
     _currentPlayerId = playerId;
-    debugPrint('[setCurrentPlayerId] New ID set: $_currentPlayerId');
     _updateTurnStatus();
     notifyListeners();
   }
@@ -79,26 +76,12 @@ class GameProvider extends ChangeNotifier {
         currentTurnPlayerId = _room!.players[idx].id;
       }
       
-      // Debug: Print all players and their IDs
-      debugPrint('[turn] All players: ${_room!.players.map((p) => '${p.id}:${p.socketId}').join(', ')}');
-      debugPrint('[turn] Current player index: $idx');
-      debugPrint('[turn] Current turn player ID: $currentTurnPlayerId');
-      debugPrint('[turn] My player ID: $_currentPlayerId');
-      
       _isMyTurn = currentTurnPlayerId == _currentPlayerId;
       
       // Automatically start placing tiles when it's our turn
       if (_isMyTurn && !_isPlacingTiles) {
         _isPlacingTiles = true;
-        debugPrint('[turn] Auto-starting placing tiles mode');
       }
-      
-      debugPrint('[turn] myId='+(_currentPlayerId??'?')+
-          ', currentIdx='+idx.toString()+', idxId='+ (currentTurnPlayerId??'?')+
-          ', isMyTurn='+ _isMyTurn.toString()+
-          ', isPlacingTiles='+ _isPlacingTiles.toString());
-    } else {
-      debugPrint('[turn] Cannot update turn status: room=${_room != null}, currentPlayerId=${_currentPlayerId != null}');
     }
   }
   
@@ -188,26 +171,19 @@ class GameProvider extends ChangeNotifier {
 
   /// Places a dragged tile onto the board (drag-and-drop support)
   void placeDraggedTile(Tile tile, Position position) {
-    debugPrint('[placeDraggedTile] Called with tile=$tile, position=$position');
-    debugPrint('[placeDraggedTile] Current state: isMyTurn=$isMyTurn, isPlacingTiles=$isPlacingTiles');
-    
     if (!isMyTurn) {
-      debugPrint('[placeDraggedTile] Rejected: Not your turn');
       _setErrorMessage('Not your turn');
       return;
     }
     if (_room?.board.getTileAt(position) != null) {
-      debugPrint('[placeDraggedTile] Rejected: Position already occupied');
       _setErrorMessage('Position already occupied!');
       return;
     }
     if (_pendingPlacements.any((p) => p.position == position)) {
-      debugPrint('[placeDraggedTile] Rejected: Position already has pending tile');
       _setErrorMessage('Position already has a pending tile!');
       return;
     }
 
-    debugPrint('[placeDraggedTile] Successfully placing tile');
     _pendingPlacements.add(PlacedTile(
       tile: tile.copyWith(isNewlyPlaced: true),
       position: position,
@@ -271,28 +247,39 @@ class GameProvider extends ChangeNotifier {
     // Emit placements to server as a batch then submit the move
     try {
       final roomId = _room!.id;
+      
+      debugPrint('[submitMove] Submitting move with ${_pendingPlacements.length} tiles');
+      debugPrint('[submitMove] Placed tiles: ${_pendingPlacements.map((pt) => '${pt.tile.letter}@(${pt.position.row},${pt.position.col})').join(', ')}');
+      
       final placedPayload = _pendingPlacements
           .map((pt) => pt.toJson())
           .toList();
+      
       _sockets.submitMove(roomId, placedTiles: placedPayload);
 
       // Log words formed for debugging/analytics
       _lastSubmittedWords = List<String>.from(validation.wordsFormed);
-      debugPrint('[submitMove] words=' + _lastSubmittedWords.join(' | '));
+      debugPrint('[submitMove] Words formed: ${_lastSubmittedWords.join(' | ')}');
+      
+      // Set a timer to check if board was updated, if not request a refresh
+      Future.delayed(const Duration(seconds: 2), () {
+        if (_room != null && _room!.board.getAllTiles().isEmpty) {
+          _sockets.socketClient.emit('getRoomUpdate', {'roomId': roomId});
+        }
+      });
 
-      // Locally commit tiles to the board so they stay visible until the server syncs
-      var newBoard = _room!.board;
-      for (final pt in _pendingPlacements) {
-        final committedTile = pt.tile.copyWith(isOnBoard: true, isNewlyPlaced: false);
-        newBoard.placeTile(committedTile, pt.position);
-      }
-      _room = _room!.copyWith(board: newBoard);
+      // Don't commit tiles locally - wait for server confirmation
+      // This ensures all players see the same board state
+      
+      // Update turn status but don't modify the board yet
       _updateTurnStatus();
 
       // Locally finalize UI state; server will sync room via listeners
       _isPlacingTiles = false;
-      _pendingPlacements.clear();
       selectedRackIndex = null;
+      
+      // Clear pending placements AFTER sending to server
+      _pendingPlacements.clear();
       // Clear hover/preview after submit
       if (_room != null) {
         _sockets.clearHover(_room!.id);
