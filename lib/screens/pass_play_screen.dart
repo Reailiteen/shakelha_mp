@@ -237,39 +237,6 @@ class _PassPlayScreenState extends State<PassPlayScreen> {
                       return Row(
                         children: [
                           Expanded(child: Topbar(currentText: turnLabel)),
-                          
-                          // Swipe hint for letter distribution
-                          GestureDetector(
-                            onTap: () => _showLetterDistribution(context, passPlay),
-                            child: Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.swipe_right,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'توزيع الحروف',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          
                           // Word validation toggle and status
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8),

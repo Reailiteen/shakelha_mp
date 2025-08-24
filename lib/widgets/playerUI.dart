@@ -4,6 +4,7 @@ import 'package:shakelha_mp/models/move.dart';
 import 'package:shakelha_mp/widgets/tileUI.dart';
 import 'package:shakelha_mp/provider/pass_play_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:shakelha_mp/widgets/letter_distribution_view.dart';
 
 class PlayerUi extends StatelessWidget {
   const PlayerUi({Key? key, required this.name, required this.points, required this.image, required this.tiles}) : super(key: key);
@@ -20,7 +21,8 @@ class PlayerUi extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    final passPlay = context.read<PassPlayProvider?>();
+    // Use Provider.of to ensure we get a non-null provider when this widget is used under the PassPlay provider
+    final prov = Provider.of<PassPlayProvider>(context, listen: false);
     final screenWidth = MediaQuery.of(context).size.width;
     
     return Padding(
@@ -33,13 +35,11 @@ class PlayerUi extends StatelessWidget {
             child: DragTarget<PlacedTile>(
               onWillAccept: (data) {
                 // Only accept if it's the player's turn and the tile is from the board
-                return passPlay?.isMyTurn == true && data != null;
+                return prov.isMyTurn == true && data != null;
               },
               onAccept: (placedTile) {
                 // Return the tile to the rack by removing it from the board
-                if (passPlay != null) {
-                  passPlay.removePendingPlacement(placedTile.position);
-                }
+                prov.removePendingPlacement(placedTile.position);
               },
               builder: (context, candidateData, rejectedData) {
                 return Container(
@@ -89,7 +89,7 @@ class PlayerUi extends StatelessWidget {
                           childWhenDragging: const SizedBox.shrink(),
                           onDragStarted: () {
                             // Initialize placing mode if available
-                            if (passPlay != null) passPlay.startPlacingTiles();
+                            prov.startPlacingTiles();
                           },
                           child: TileUI(
                             width: tileSize,
@@ -117,8 +117,7 @@ class PlayerUi extends StatelessWidget {
                 // Pass turn icon button
                 IconButton(
                   onPressed: () {
-                    final prov = context.read<PassPlayProvider?>();
-                    prov?.passTurn();
+                    prov.passTurn();
                   },
                   icon: const Icon(Icons.skip_next, color: Colors.white, size: 24),
                   style: IconButton.styleFrom(
@@ -127,74 +126,11 @@ class PlayerUi extends StatelessWidget {
                   ),
                 ),
                 
-                // Word suggestion icon button
+                // Move history icon button (moved to be next to Pass)
                 IconButton(
                   onPressed: () {
-                    // No-op hint UI. Logic to be added later.
-                  },
-                  icon: const Icon(Icons.lightbulb, color: Colors.white, size: 24),
-                  style: IconButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 127, 141, 25),
-                    shape: const CircleBorder(),
-                  ),
-                ),
-                
-                // Submit button as small container (centered)
-                GestureDetector(
-                  onTap: () {
-                    final prov = context.read<PassPlayProvider?>();
-                    if (prov != null) {
-                      prov.submitMove();
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4CAF50),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Text(
-                      'إرسال',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Swap all tiles icon button
-                IconButton(
-                  onPressed: () {
-                    final prov = context.read<PassPlayProvider?>();
-                    if (prov == null) return;
-                    final player = prov.currentPlayer;
-                    if (player == null) return;
-                    if (player.rack.isEmpty) return;
-                    // Swap out all tiles and pass the turn
-                    prov.swapTiles(List<Tile>.from(player.rack));
-                  },
-                  icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 24),
-                  style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFF9F6538),
-                    shape: const CircleBorder(),
-                  ),
-                ),
-                
-                // Move history icon button
-                IconButton(
-                  onPressed: () {
-                    final prov = context.read<PassPlayProvider?>();
-                    if (prov?.room == null) return;
-                    final moves = prov!.room!.moveHistory;
+                    if (prov.room == null) return;
+                    final moves = prov.room!.moveHistory;
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
@@ -207,42 +143,41 @@ class PlayerUi extends StatelessWidget {
                             constraints: BoxConstraints(
                               maxHeight: MediaQuery.of(ctx).size.height * 0.9,
                             ),
-                            padding: const EdgeInsets.all(24),
+                            padding: const EdgeInsets.all(16),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                const Text('تاريخ الحركات', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                                 const SizedBox(height: 12),
-                                Center(
-                                  child: Container(
-                                    width: 120,
-                                    height: 10,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade300,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                const Text(
-                                  'الكلمات السابقة',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 24),
                                 Expanded(
                                   child: ListView.builder(
                                     itemCount: moves.length,
                                     itemBuilder: (c, i) {
-                                      final m = moves[i];
-                                      final player = prov.room!.players.firstWhere((p) => p.id == m.playerId, orElse: () => prov.room!.players.first);
-                                      final words = m.wordsFormed.isNotEmpty ? m.wordsFormed.join('، ') : '—';
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                        child: ListTile(
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                          title: Text(player.nickname, textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800)),
-                                          subtitle: Text('الكلمات: $words', textDirection: TextDirection.rtl, style: const TextStyle(fontSize: 28)),
-                                          trailing: Text('+${m.points}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                                      final move = moves[i];
+                                      // Show formed words when available, otherwise show the letters placed or move type
+                                      final wordsText = move.wordsFormed.isNotEmpty
+                                          ? move.wordsFormed.join(', ')
+                                          : (move.placedTiles.isNotEmpty
+                                              ? move.placedTiles.map((p) => p.tile.letter).join('')
+                                              : move.type.toString().split('.').last);
+                                      
+                                      return ListTile(
+                                        title: Text(
+                                          wordsText,
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        subtitle: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            if (move.placedTiles.isNotEmpty)
+                                              Text('Tiles: ' + move.placedTiles.map((p) => '${p.tile.letter}@${p.position.row},${p.position.col}').join('; ')),
+                                            Text('${move.playerId} • ${move.timestamp.toLocal().toString().split('.').first}'),
+                                          ],
+                                        ),
+                                        trailing: Text(
+                                          '+${move.totalPoints}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                       );
                                     },
@@ -260,6 +195,95 @@ class PlayerUi extends StatelessWidget {
                     backgroundColor: const Color(0xFF6750A2),
                     shape: const CircleBorder(),
                   ),
+                ),
+                
+                // Submit button as a proper ElevatedButton (fixed to reliably call provider.submitMove)
+                ElevatedButton(
+                  onPressed: () {
+                    // Ensure provider call is executed; provider should exist because widget is used under the PassPlay provider
+                    prov.submitMove();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4CAF50),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 4,
+                  ),
+                  child: const Text(
+                    'إرسال',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                
+                // Swap all tiles icon button
+                IconButton(
+                  onPressed: () {
+                    final player = prov.currentPlayer;
+                    if (player == null) return;
+                    if (player.rack.isEmpty) return;
+                    // Swap out all tiles and pass the turn
+                    prov.swapTiles(List<Tile>.from(player.rack));
+                  },
+                  icon: const Icon(Icons.swap_horiz, color: Colors.white, size: 24),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFF9F6538),
+                    shape: const CircleBorder(),
+                  ),
+                ),
+                
+                // More menu (replaces hint). Contains Hint and Letter Distribution
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.blue),
+                  color: const Color.fromARGB(255, 75, 126, 220),
+                  onSelected: (value) async {
+                    if (value == 'hint') {
+                      // For now show a placeholder hint sheet. Real hint logic can be added in the provider later.
+                      showModalBottomSheet(
+                        context: context,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (ctx) {
+                          return SafeArea(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const Text('تلميح', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                  const SizedBox(height: 12),
+                                  const Text('سيظهر التلميح هنا. تفعيل منطق التلميحات في المزود (provider) لاحقًا.'),
+                                  const SizedBox(height: 12),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    child: const Text('إغلاق'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    } else if (value == 'distribution') {
+                      // Show the letter distribution bottom sheet (moved here from the top bar)
+                      final letterDistribution = prov.room?.letterDistribution;
+                      showDialog(
+                        context: context,
+                        builder: (dCtx) => LetterDistributionBottomSheet(
+                          letterDistribution: letterDistribution,
+                        ),
+                      );
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(value: 'hint', child: Text('تلميح')),
+                    const PopupMenuItem(value: 'distribution', child: Text('توزيع الحروف')),
+                  ],
                 ),
               ],
             ),

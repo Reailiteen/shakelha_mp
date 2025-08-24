@@ -403,7 +403,8 @@ class Board {
       pos.sort((a, b) => a.col.compareTo(b.col));
       // Start from leftmost tile (Arabic is RTL but word detection is LTR)
       final (main, _) = buildWordFrom(pos.first, isRow);
-      if (main.length > 1) words.add(main);
+      final normalizedMain = _normalizeDetectedWord(main, true);
+      if (normalizedMain.length > 1) words.add(normalizedMain);
     } else {
       // For vertical words, start from the topmost tile
       pos.sort((a, b) => a.row.compareTo(b.row));
@@ -892,15 +893,16 @@ class Board {
           final wordLength = currentWord.length;
           if (wordLength >= 2) {
             // Enhanced validation that considers Scrabble rules
+            final normalized = _normalizeDetectedWord(currentWord, true);
             final status = _validateWordWithScrabbleRules(
-              currentWord, 
-              currentPositions, 
+              normalized,
+              currentPositions,
               true, // isHorizontal
               pendingTiles: pendingTiles
             );
             
             words.add(ValidatedWord(
-              text: currentWord,
+              text: normalized,
               positions: List.from(currentPositions),
               isHorizontal: true,
               status: status,
@@ -938,15 +940,16 @@ class Board {
           final wordLength = currentWord.length;
           if (wordLength >= 2) {
             // Enhanced validation that considers Scrabble rules
+            final normalized = _normalizeDetectedWord(currentWord, false);
             final status = _validateWordWithScrabbleRules(
-              currentWord, 
-              currentPositions, 
+              normalized,
+              currentPositions,
               false, // isHorizontal
               pendingTiles: pendingTiles
             );
             
             words.add(ValidatedWord(
-              text: currentWord,
+              text: normalized,
               positions: List.from(currentPositions),
               isHorizontal: false,
               status: status,
@@ -1134,6 +1137,16 @@ class Board {
     return buffer.toString();
   }
   
+  /// Normalize detected word for dictionary lookup. For Arabic (RTL) we reverse horizontal words
+  String _normalizeDetectedWord(String word, bool isHorizontal) {
+    if (!isHorizontal) return word;
+    // Reverse character order so horizontal words are validated in RTL order
+    try {
+      return word.split('').reversed.join();
+    } catch (_) {
+      return word;
+    }
+  }
 }
 
 /// Represents a cell multiplier (letter or word)

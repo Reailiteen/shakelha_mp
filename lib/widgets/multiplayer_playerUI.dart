@@ -33,7 +33,15 @@ class MultiplayerPlayerUi extends StatelessWidget {
     final roomDataProvider = context.watch<RoomDataProvider>();
     final screenWidth = MediaQuery.of(context).size.width;
     final room = roomDataProvider.room;
-    
+    // If the provided tiles list is empty (e.g. first player), try to use the current player's rack from the room
+    final mySocketId = socketMethods.socketClient?.id;
+    final me = (room != null && mySocketId != null)
+        ? room.players.firstWhere((p) => p.socketId == mySocketId, orElse: () => room.players.first)
+        : null;
+    final List<Tile> displayTiles = tiles.isNotEmpty
+        ? tiles
+        : (me != null ? List<Tile>.from(me.rack) : tiles);
+
     return Padding(
       padding: const EdgeInsets.all(4.0),
       child: Column(
@@ -57,13 +65,13 @@ class MultiplayerPlayerUi extends StatelessWidget {
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: tiles.isEmpty 
+                children: displayTiles.isEmpty 
                   ? [
                       // Show empty rack message
                       Expanded(
                         child: Center(
                           child: Text(
-                            'Rack is empty (${tiles.length} tiles)',
+                            'Rack is empty (${displayTiles.length} tiles)',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -73,7 +81,7 @@ class MultiplayerPlayerUi extends StatelessWidget {
                         ),
                       ),
                     ]
-                  : tiles.asMap().entries.map((entry) {
+                  : displayTiles.asMap().entries.map((entry) {
                       final tile = entry.value;
                       final double tileSize = (screenWidth - 50) / 7; // 7 tiles with padding
                       
