@@ -72,6 +72,15 @@ class SocketMethods {
       return;
     }
     
+    // Check connection quality before attempting to join
+    if (_socketClient.connected) {
+      final quality = _getConnectionQuality();
+      if (quality < 50) {
+        print('[SocketMethods] Poor connection quality ($quality%) - attempting to improve connection');
+        _improveConnection();
+      }
+    }
+    
     // Wait a bit for socket to be ready if not connected
     if (!_socketClient.connected) {
       int attempts = 0;
@@ -81,6 +90,7 @@ class SocketMethods {
       }
       
       if (!_socketClient.connected) {
+        print('[SocketMethods] Failed to connect after 10 attempts');
         return;
       }
     }
@@ -182,6 +192,37 @@ class SocketMethods {
     });
   }
 
+  /// Get current connection quality (0-100)
+  int _getConnectionQuality() {
+    try {
+      // Access the connection quality from the socket client
+      final socketClient = SocketClient.instance;
+      return socketClient.connectionQuality;
+    } catch (e) {
+      print('[SocketMethods] Error getting connection quality: $e');
+      return 0;
+    }
+  }
+
+  /// Attempt to improve connection quality
+  void _improveConnection() {
+    try {
+      final socketClient = SocketClient.instance;
+      if (socketClient.connectionQuality < 50) {
+        print('[SocketMethods] Attempting to improve connection...');
+        socketClient.forceReconnect();
+      }
+    } catch (e) {
+      print('[SocketMethods] Error improving connection: $e');
+    }
+  }
+
+  /// Check if socket is connected and healthy
+  bool get isConnected => _socketClient.connected;
+
+  /// Get connection quality percentage
+  int get connectionQuality => _getConnectionQuality();
+
   /// Marks the current player as ready/unready in the lobby.
   /// Server should:
   /// - track ready state per player
@@ -277,57 +318,85 @@ class SocketMethods {
        debugPrint('[updateRoomListener] 🔍 Status: $status, hasGameStarted: $hasGameStarted, board exists: ${map['board'] != null}');
        
        if (map['board'] != null) {
-        // Game is in progress, preserve the board
+        // Check if board actually has tiles or is just an empty structure
         final boardData = map['board'] as Map<String, dynamic>;
+        final gridData = boardData['board'] ?? boardData['grid'] as List? ?? [];
         
-                 // Handle different board field names from server
-         final size = boardData['size'] ?? boardData['boardSize'] as int? ?? 15;
-         final gridData = boardData['board'] ?? boardData['grid'] as List? ?? [];
-         
-         // Debug the board data structure
-         debugPrint('[updateRoomListener] 🔍 Board data: size=$size, gridData length=${gridData.length}');
-         debugPrint('[updateRoomListener] 🔍 Raw gridData: $gridData');
-        
-        final grid = List.generate(size, (r) {
-          if (r >= gridData.length) {
-            return List.filled(size, null);
-          }
-          final rowData = gridData[r] as List? ?? [];
-          return List.generate(size, (c) {
-            if (c >= rowData.length) return null;
-            final cell = rowData[c];
-            if (cell == null) return null;
-            if (cell is Map) {
-              final letter = (cell['letter'] ?? '') as String;
-              if (letter.isEmpty) return null;
-              final points = (cell['points'] ?? cell['value'] ?? 1) as int;
-              final isNew = (cell['isNewlyPlaced'] ?? cell['isNew'] ?? false) as bool;
-              return Tile(
-                letter: letter,
-                value: points,
-                isOnBoard: true,
-                isNewlyPlaced: isNew,
-              );
-            } else if (cell is String && cell.isNotEmpty) {
-              return Tile(letter: cell, value: 1, isOnBoard: true);
+        // Check if the grid actually contains any tiles
+        bool hasTiles = false;
+        if (gridData.isNotEmpty) {
+          for (final row in gridData) {
+            if (row is List) {
+              for (final cell in row) {
+                if (cell != null && cell is Map && (cell['letter'] ?? '').isNotEmpty) {
+                  hasTiles = true;
+                  break;
+                } else if (cell != null && cell is String && cell.isNotEmpty) {
+                  hasTiles = true;
+                  break;
+                }
+              }
+              if (hasTiles) break;
             }
-            return null;
+          }
+        }
+        
+        if (hasTiles) {
+          // Game is in progress with actual tiles, preserve the board
+          final size = boardData['size'] ?? boardData['boardSize'] as int? ?? 15;
+          
+          // Debug the board data structure
+          debugPrint('[updateRoomListener] 🔍 Board data: size=$size, gridData length=${gridData.length}');
+          debugPrint('[updateRoomListener] 🔍 Raw gridData: $gridData');
+          
+          final grid = List.generate(size, (r) {
+            if (r >= gridData.length) {
+              return List.filled(size, null);
+            }
+            final rowData = gridData[r] as List? ?? [];
+            return List.generate(size, (c) {
+              if (c >= rowData.length) return null;
+              final cell = rowData[c];
+              if (cell == null) return null;
+              if (cell is Map) {
+                final letter = (cell['letter'] ?? '') as String;
+                if (letter.isEmpty) return null;
+                final points = (cell['points'] ?? cell['value'] ?? 1) as int;
+                final isNew = (cell['isNewlyPlaced'] ?? cell['isNew'] ?? false) as bool;
+                return Tile(
+                  letter: letter,
+                  value: points,
+                  isOnBoard: true,
+                  isNewlyPlaced: isNew,
+                );
+              } else if (cell is String && cell.isNotEmpty) {
+                return Tile(letter: cell, value: 1, isOnBoard: true);
+              }
+              return null;
+            });
           });
-                 });
-         
-         // Count actual tiles found in the grid
-         int tileCount = 0;
-         for (int r = 0; r < size; r++) {
-           for (int c = 0; c < size; c++) {
-             if (grid[r][c] != null) tileCount++;
-           }
+          
+          // Count actual tiles found in the grid
+          int tileCount = 0;
+          for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+              if (grid[r][c] != null) tileCount++;
+            }
+          }
+          debugPrint('[updateRoomListener] 🔍 Found $tileCount tiles in grid');
+          
+          normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
+                 } else {
+           // Board structure exists but is empty, use empty board
+           debugPrint('[updateRoomListener] 🔍 Board structure exists but is empty, using empty board');
+           normalizedBoard = Board.empty(size: 15);
+           debugPrint('[updateRoomListener] 🔍 Created empty board with ${normalizedBoard.getAllTiles().length} tiles');
          }
-         debugPrint('[updateRoomListener] 🔍 Found $tileCount tiles in grid');
-         
-         normalizedBoard = Board(size: size, grid: grid, cellMultipliers: Board.empty(size: size).cellMultipliers);
        } else {
-         // New game or room not started, use empty board
+         // No board data at all, use empty board
+         debugPrint('[updateRoomListener] 🔍 No board data, using empty board');
          normalizedBoard = Board.empty(size: 15);
+         debugPrint('[updateRoomListener] 🔍 Created empty board with ${normalizedBoard.getAllTiles().length} tiles');
        }
 
       final normalized = {

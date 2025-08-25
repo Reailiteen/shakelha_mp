@@ -403,8 +403,7 @@ class Board {
       pos.sort((a, b) => a.col.compareTo(b.col));
       // Start from leftmost tile (Arabic is RTL but word detection is LTR)
       final (main, _) = buildWordFrom(pos.first, isRow);
-      final normalizedMain = _normalizeDetectedWord(main, true);
-      if (normalizedMain.length > 1) words.add(normalizedMain);
+      if (main.length > 1) words.add(main);
     } else {
       // For vertical words, start from the topmost tile
       pos.sort((a, b) => a.row.compareTo(b.row));
@@ -429,6 +428,7 @@ class Board {
   }
 
   /// Builds a word starting from a given position in a direction.
+  /// For Arabic Scrabble: words are read right-to-left (horizontal) and top-to-bottom (vertical)
   (String, int) buildWordFrom(Position start, bool isRow) {
     print('[Board] buildWordFrom called: start=${start.row},${start.col}, isRow=$isRow');
     
@@ -450,29 +450,70 @@ class Board {
     // Second pass: collect letters and calculate scores from start to end
     StringBuffer buffer = StringBuffer();
     int stepsForward = 0;
-    while (true) {
-      final tile = getTileAt(p);
-      if (tile == null) break;
-      
-      // Get base letter value
-      int letterValue = tile.value;
-      
-      // Apply letter multipliers
-      if (cellMultipliers.containsKey(tile.position)) {
-        final mult = cellMultipliers[tile.position]!;
-        if (mult.isWordMultiplier) {
-          wordMultiplier *= mult.value;
-        } else {
-          letterValue *= mult.value;
-        }
+    
+    // Arabic Scrabble: horizontal words read right-to-left, vertical words read top-to-bottom
+    if (isRow) {
+      // Horizontal words: read from right to left (Arabic convention)
+      // Start from the rightmost position and move left
+      Position rightmost = p;
+      while (true) {
+        Position next = Position(row: rightmost.row, col: rightmost.col + 1);
+        if (getTileAt(next) == null) break;
+        rightmost = next;
       }
       
-      letterValues.add(letterValue);
-      buffer.write(tile.letter);
-      
-      // Move forward in the word direction
-      p = isRow ? Position(row: p.row, col: p.col + 1) : Position(row: p.row + 1, col: p.col);
-      stepsForward++;
+      // Now read from right to left
+      p = rightmost;
+      while (true) {
+        final tile = getTileAt(p);
+        if (tile == null) break;
+        
+        // Get base letter value
+        int letterValue = tile.value;
+        
+        // Apply letter multipliers
+        if (cellMultipliers.containsKey(tile.position)) {
+          final mult = cellMultipliers[tile.position]!;
+          if (mult.isWordMultiplier) {
+            wordMultiplier *= mult.value;
+          } else {
+            letterValue *= mult.value;
+          }
+        }
+        
+        letterValues.add(letterValue);
+        buffer.write(tile.letter);
+        
+        // Move left (Arabic reading direction)
+        p = Position(row: p.row, col: p.col - 1);
+        stepsForward++;
+      }
+    } else {
+      // Vertical words: read from top to bottom
+      while (true) {
+        final tile = getTileAt(p);
+        if (tile == null) break;
+        
+        // Get base letter value
+        int letterValue = tile.value;
+        
+        // Apply letter multipliers
+        if (cellMultipliers.containsKey(tile.position)) {
+          final mult = cellMultipliers[tile.position]!;
+          if (mult.isWordMultiplier) {
+            wordMultiplier *= mult.value;
+          } else {
+            letterValue *= mult.value;
+          }
+        }
+        
+        letterValues.add(letterValue);
+        buffer.write(tile.letter);
+        
+        // Move down
+        p = Position(row: p.row + 1, col: p.col);
+        stepsForward++;
+      }
     }
 
     // Calculate total score: sum of letter values × word multiplier
@@ -893,16 +934,15 @@ class Board {
           final wordLength = currentWord.length;
           if (wordLength >= 2) {
             // Enhanced validation that considers Scrabble rules
-            final normalized = _normalizeDetectedWord(currentWord, true);
             final status = _validateWordWithScrabbleRules(
-              normalized,
-              currentPositions,
+              currentWord, 
+              currentPositions, 
               true, // isHorizontal
               pendingTiles: pendingTiles
             );
             
             words.add(ValidatedWord(
-              text: normalized,
+              text: currentWord,
               positions: List.from(currentPositions),
               isHorizontal: true,
               status: status,
@@ -940,16 +980,15 @@ class Board {
           final wordLength = currentWord.length;
           if (wordLength >= 2) {
             // Enhanced validation that considers Scrabble rules
-            final normalized = _normalizeDetectedWord(currentWord, false);
             final status = _validateWordWithScrabbleRules(
-              normalized,
-              currentPositions,
+              currentWord, 
+              currentPositions, 
               false, // isHorizontal
               pendingTiles: pendingTiles
             );
             
             words.add(ValidatedWord(
-              text: normalized,
+              text: currentWord,
               positions: List.from(currentPositions),
               isHorizontal: false,
               status: status,
@@ -1137,16 +1176,6 @@ class Board {
     return buffer.toString();
   }
   
-  /// Normalize detected word for dictionary lookup. For Arabic (RTL) we reverse horizontal words
-  String _normalizeDetectedWord(String word, bool isHorizontal) {
-    if (!isHorizontal) return word;
-    // Reverse character order so horizontal words are validated in RTL order
-    try {
-      return word.split('').reversed.join();
-    } catch (_) {
-      return word;
-    }
-  }
 }
 
 /// Represents a cell multiplier (letter or word)

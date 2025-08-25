@@ -33,6 +33,9 @@ class MultiplayerPlayerUi extends StatelessWidget {
     final roomDataProvider = context.watch<RoomDataProvider>();
     final screenWidth = MediaQuery.of(context).size.width;
     final room = roomDataProvider.room;
+    // Watch GameProvider to know if it's our turn (used to enable/disable actions)
+    final gameProv = context.watch<GameProvider?>();
+    final bool isMyTurn = gameProv?.isMyTurn ?? false;
     // If the provided tiles list is empty (e.g. first player), try to use the current player's rack from the room
     final mySocketId = socketMethods.socketClient?.id;
     final me = (room != null && mySocketId != null)
@@ -130,8 +133,10 @@ class MultiplayerPlayerUi extends StatelessWidget {
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: room != null ? () {
-                              socketMethods.passTurn(room.id);
+                            onPressed: (room != null && isMyTurn) ? () {
+                              // Route pass through GameProvider so turn checks are enforced
+                              final gp = Provider.of<GameProvider>(context, listen: false);
+                              gp.passTurn();
                             } : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF137F83),
@@ -155,11 +160,10 @@ class MultiplayerPlayerUi extends StatelessWidget {
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: room != null ? () {
-                              // Get placedTiles from GameProvider before submitting
+                            onPressed: (room != null && isMyTurn) ? () {
+                              // Submit via GameProvider so validation and turn checks run locally
                               final gameProvider = Provider.of<GameProvider>(context, listen: false);
-                              final placedTiles = gameProvider.pendingPlacements.map((pt) => pt.toJson()).toList();
-                              socketMethods.submitMove(room.id, placedTiles: placedTiles);
+                              gameProvider.submitMove();
                             } : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color.fromARGB(255, 127, 141, 25),

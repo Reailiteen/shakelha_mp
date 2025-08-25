@@ -284,13 +284,15 @@ class _BoardUIState extends State<BoardUI> {
             
             // Debug grid overlay (disabled)
             if (false) // Set to true to enable debug grid
-              IgnorePointer(
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: DebugGridPainter(
-                    cellSize: _cellSize,
-                    boardSize: boardSize,
-                    gridSize: widget.boardSize,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: DebugGridPainter(
+                      cellSize: _cellSize,
+                      boardSize: boardSize,
+                      gridSize: widget.boardSize,
+                    ),
                   ),
                 ),
               ),

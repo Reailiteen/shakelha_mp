@@ -29,9 +29,9 @@ class GameUi extends StatelessWidget {
           ),
         ),
         // Subtle dark overlay to improve foreground contrast (non-interactive)
-        IgnorePointer(
-          ignoring: true,
-          child: Positioned.fill(
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: true,
             child: Container(color: const Color.fromARGB(255, 162, 35, 35).withOpacity(0.16)),
           ),
         ),
@@ -55,9 +55,9 @@ class GameUi extends StatelessWidget {
           ),
         ),
         // Outer green outline above background but does not block input
-        IgnorePointer(
-          ignoring: true,
-          child: Positioned.fill(
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: true,
             child: Padding(
               padding: const EdgeInsets.all(10.0),
               child: Container(

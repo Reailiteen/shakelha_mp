@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shakelha_mp/resources/socket_client.dart';
+import 'package:shakelha_mp/utils/colors.dart';
 
 class Topbar extends StatelessWidget {
   const Topbar({
@@ -179,6 +181,84 @@ class Topbar extends StatelessWidget {
               SizedBox(width: screenWidth * 0.15),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildConnectionStatus() {
+    return Container(
+      margin: const EdgeInsets.only(left: 12),
+      child: StreamBuilder(
+        stream: Stream.periodic(const Duration(seconds: 2), (_) => SocketClient.instance.connectionQuality),
+        builder: (context, snapshot) {
+          final quality = snapshot.data ?? 0;
+          final isConnected = SocketClient.instance.isConnected;
+          
+          Color statusColor;
+          IconData statusIcon;
+          String statusText;
+          
+          if (!isConnected) {
+            statusColor = Colors.red;
+            statusIcon = Icons.wifi_off;
+            statusText = 'Offline';
+          } else if (quality >= 80) {
+            statusColor = Colors.green;
+            statusIcon = Icons.wifi;
+            statusText = 'Excellent';
+          } else if (quality >= 60) {
+            statusColor = Colors.orange;
+            statusIcon = Icons.wifi;
+            statusText = 'Good';
+          } else if (quality >= 40) {
+            statusColor = Colors.orange;
+            statusIcon = Icons.wifi_2_bar;
+            statusText = 'Fair';
+          } else {
+            statusColor = Colors.red;
+            statusIcon = Icons.wifi_1_bar;
+            statusText = 'Poor';
+          }
+          
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  statusIcon,
+                  color: Colors.white,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  statusText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (isConnected) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    '$quality%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }
